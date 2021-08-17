@@ -27,10 +27,10 @@ clean:
 	-rm -f ./build/*.o client server
 
 server: $(OBJS)
-	$(CC) $(FLAGS) ./src/server.c -o server $(OBJS)
+	$(CC) $(FLAGS) ./src/server.c -o $(BUILD_DIR)/server $(OBJS)
 
 client:
-	$(CC) $(FLAGS) ./src/client.c -o client $(OBJS) 
+	$(CC) $(FLAGS) ./src/client.c -o $(BUILD_DIR)/client $(OBJS) 
 
 
 
