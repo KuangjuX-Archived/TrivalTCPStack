@@ -1,5 +1,5 @@
 TOP_DIR = .
-INC_DIR = $(TOP_DIR)/inc
+INC_DIR = $(TOP_DIR)/include
 SRC_DIR = $(TOP_DIR)/src
 BUILD_DIR = $(TOP_DIR)/build
 
@@ -28,9 +28,11 @@ clean:
 
 server: $(OBJS)
 	$(CC) $(FLAGS) ./src/server.c -o $(BUILD_DIR)/server $(OBJS)
+	$(BUILD_DIR)/server
 
-client:
+client: $(OBJS)
 	$(CC) $(FLAGS) ./src/client.c -o $(BUILD_DIR)/client $(OBJS) 
+	$(BUILD_DIR)/client
 
 
 
