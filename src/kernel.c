@@ -16,7 +16,7 @@ void onTCPPocket(char* pkt){
         remote_ip = inet_network("10.0.0.2");
     }else if(strcmp(hostname,"client")==0){ // 自己是客户端 远端就是服务端 
         local_ip = inet_network("10.0.0.2");
-        remote_ip = inet_network("");
+        remote_ip = inet_network("10.0.0.3");
     }
 
     int hashval;
