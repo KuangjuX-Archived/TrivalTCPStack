@@ -3,17 +3,22 @@ INC_DIR = $(TOP_DIR)/inc
 SRC_DIR = $(TOP_DIR)/src
 BUILD_DIR = $(TOP_DIR)/build
 
-CC=gcc
+CC = gcc
 FLAGS = -pthread -g -ggdb -DDEBUG -I$(INC_DIR)
+
 OBJS = $(BUILD_DIR)/tju_packet.o \
 	   $(BUILD_DIR)/kernel.o \
 	   $(BUILD_DIR)/tju_tcp.o 
+
+LIBS = $(BUILD_DIR)/tju_packet.c \
+	   $(BUILD_DIR)/kernel.c \
+	   $(BUILD_DIR)/tju_tcp.c
 
 
 
 default:all
 
-all: clean server client
+.PHONY: clean build server client
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c 
 	$(CC) $(FLAGS) -c -o $@ $<
