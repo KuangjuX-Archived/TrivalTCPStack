@@ -9,7 +9,7 @@ int main(int argc, char **argv) {
     // printf("my_tcp state %d\n", my_server->state);
     
     tju_sock_addr bind_addr;
-    bind_addr.ip = inet_network("10.0.0.1");
+    bind_addr.ip = inet_network("10.0.0.3");
     bind_addr.port = 1234;
 
     tju_bind(my_server, bind_addr);

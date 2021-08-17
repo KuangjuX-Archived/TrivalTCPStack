@@ -5,7 +5,7 @@ WORKDIR /app
 COPY . .
 
 RUN apt-get update \
-    && apt install build-essential \
-    && apt install python3.8 \
+    && apt install -y build-essential \
+    && apt install -y python3.8 \
     && cd /app \
-    && python build.py
+    && python3.8 build.py

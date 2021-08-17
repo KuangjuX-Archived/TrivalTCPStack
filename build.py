@@ -14,8 +14,8 @@ def get_host_ip():
 
 local_ip = get_host_ip()
 
-client_ip = "10.0.0.1"
-server_ip = "10.0.0.2"
+client_ip = "10.0.0.2"
+server_ip = "10.0.0.3"
 
 if local_ip == client_ip:
     os.system("make client")
