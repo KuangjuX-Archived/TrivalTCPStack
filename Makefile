@@ -18,7 +18,8 @@ LIBS = $(BUILD_DIR)/tju_packet.c \
 
 default:all
 
-.PHONY: clean build server client
+all: clean server client
+.PHONY: clean server client
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c 
 	$(CC) $(FLAGS) -c -o $@ $<
