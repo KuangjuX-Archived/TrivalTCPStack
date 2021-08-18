@@ -116,4 +116,7 @@ typedef struct {
 
 } tju_tcp_t;
 
+const char* client_ip = "10.0.0.2";
+const char* server_ip = "10.0.0.3";
+
 #endif

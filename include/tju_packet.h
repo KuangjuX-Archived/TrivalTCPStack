@@ -19,6 +19,8 @@
 #define ACK_FLAG_MASK 0x4
 #define FIN_FLAG_MASK 0x2
 
+#define HEADER_LEN 20
+
 // TCP 报文 header部分 的结构定义
 typedef struct {
 	uint16_t source_port;		//2 bytes 源端口

@@ -1,26 +1,100 @@
 #include "tju_tcp.h"
 
 
-int accept_handshake(tju_tcp_t* sock, tju_sock_addr target_addr) {
+int accept_handshake(
+    tju_tcp_t* sock, 
+    tju_sock_addr local_addr,
+    tju_sock_addr target_addr
+) {
     // three-way handshake in server end
     printf("Connectting......");
-    while (sock->state != ESTABLISHED) {
+    while (TRUE) {
         // Get Packet
         int header_len = 512;
-        char* buf = (char*)malloc(512 * sizeof(char));
+        char* buf = (char*)malloc(header_len * sizeof(char));
         tju_recv(sock, (void*)buf, header_len);
-        tju_packet_t* pkt = (tju_packet_t*) buf;
-        if (pkt->header.flags == SYN_SENT) {
-            
-        }else if(pkt->header.flags == ESTABLISHED) {
+        uint8_t flags = get_flags(buf);
+        uint32_t seq = get_seq(buf);
+        if (flags == SYN_SENT) {
+            // When receive packet flag is SYN_SENT,
+            // resend packet, flag is SYN_SENT
+            char* pkt = create_packet_buf(
+                local_addr.ip,
+                target_addr.ip,
+                seq,
+                1,
+                HEADER_LEN,
+                HEADER_LEN,
+                SYN_RECV,
+                0,
+                0,
+                (char*)0,
+                HEADER_LEN
+            );
+            tju_send(sock, (void*)pkt, HEADER_LEN);
+        }else if(flags == ESTABLISHED) {
             sock->state = ESTABLISHED;
             return 0;
         }
     }
 }
 
-int connect_handshake(tju_tcp_t* sock, tju_sock_addr target_addr) {
+int connect_handshake(
+    tju_tcp_t* sock,
+    tju_sock_addr local_addr, 
+    tju_sock_addr target_addr
+) {
+    printf("Connecting......");
+    // client send packet to request server accept connection
+    char* req = create_packet_buf(
+        local_addr.ip,
+        target_addr.ip,
+        0,
+        1,
+        HEADER_LEN,
+        HEADER_LEN,
+        ESTABLISHED,
+        0,
+        0,
+        (char*)0,
+        HEADER_LEN
+    );
+    tju_send(sock, (void*)req, HEADER_LEN);
 
+    // Block process to wait server's response. 
+    while (TRUE) {
+        int header_len = 512;
+        while (TRUE) {
+            // Get Packet
+            int header_len = 512;
+            char* buf = (char*)malloc(header_len * sizeof(char));
+            tju_recv(sock, (void*)buf, header_len);
+            uint8_t flags = get_flags(buf);
+            uint32_t seq = get_seq(buf);
+            if (flags == SYN_RECV) {
+                // When receive packet flag is SYN_SENT,
+                // resend packet, flag is SYN_SENT
+                sock->state = ESTABLISHED;
+                char* pkt = create_packet_buf(
+                    local_addr.ip,
+                    target_addr.ip,
+                    ++seq,
+                    1,
+                    HEADER_LEN,
+                    HEADER_LEN,
+                    ESTABLISHED,
+                    0,
+                    0,
+                    (char*)0,
+                    HEADER_LEN
+                );
+                tju_send(sock, (void*)pkt, HEADER_LEN);
+            }else if(flags == ESTABLISHED) {
+                // established connection
+                return 0;
+            }
+        }
+    }
 }
 
 /*
@@ -159,7 +233,7 @@ int tju_send(tju_tcp_t* sock, const void *buffer, int len){
 }
 
 int tju_recv(tju_tcp_t* sock, void *buffer, int len){
-    while(sock->received_len<=0){
+    while(sock->received_len <= 0){
         // 阻塞
     }
 
