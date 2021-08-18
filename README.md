@@ -20,18 +20,30 @@ As follow, we have to create my own network configuration:
 ```shell
 docker network create --subnet=10.0.0.0/16 mynetwork
 ```
-And then we can run our container by static ip address:     
 
+Before create the server/client containers, you should know the **absolute path** of this project in your computer. 
+You can use the `pwd` command to get the path.
+
+And then we can run our container by static ip address and bind this project in a double-way between your host and containers:     
+**NOTICE!** Replace {project path on your host} by your path:
 ```shell
-sudo docker run -it --name server --net mynetwork --ip 10.0.0.3 --hostname server tcp
-sudo docker run -it --name client --net mynetwork --ip 10.0.0.2 --hostname client tcp
+sudo docker run -itd --name server --net mynetwork --ip 10.0.0.3 --hostname server -v {project path on your host}:/tjutcp tcp /bin/bash
+sudo docker run -itd --name client --net mynetwork --ip 10.0.0.2 --hostname client tcp -v {project path on your host}:/tjutcp tcp /bin/bash
 ```
-execute `make server` in server container and execute `make client` in client container, we can run the project easily.
+
+The following commands could attach you in to each container:
+````shell
+ sudo docker exec -it client  /bin/bash
+ sudo docker exec -it server  /bin/bash
+````
+execute `make server` in server container and execute `make client` in client container under the `/tjutcp` folder, we can run the project easily.
 
 ## Differnes
 We use `10.0.0.3` as server's ip address instead of `10.0.0.1` because this address is reported occupied.
 
 ## Other
+Once create the containers by the params `-itd`, they keep running in the background.  
+Get more information on the Docker website.
 Destroy all running containers:     
 
 ```shell

@@ -1,8 +1,8 @@
 FROM ubuntu:latest
 
-WORKDIR /app
+#WORKDIR /app
 
-COPY . .
+#COPY . .
 
 RUN apt-get update \
     && apt install -y build-essential \
