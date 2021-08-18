@@ -22,18 +22,18 @@ all: clean server client
 .PHONY: clean server client
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c 
-	$(CC) $(FLAGS) -c -o $@ $<
+	@$(CC) $(FLAGS) -c -o $@ $<
 
 clean:
-	-rm -f ./build/*.o $(BUILD_DIR)/client $(BUILD_DIR)/server
+	@-rm -f ./build/*.o $(BUILD_DIR)/client $(BUILD_DIR)/server
 
 server: $(OBJS)
-	$(CC) $(FLAGS) ./src/server.c -o $(BUILD_DIR)/server $(OBJS)
-	$(BUILD_DIR)/server
+	@$(CC) $(FLAGS) ./src/server.c -o $(BUILD_DIR)/server $(OBJS)
+	@$(BUILD_DIR)/server
 
 client: $(OBJS)
-	$(CC) $(FLAGS) ./src/client.c -o $(BUILD_DIR)/client $(OBJS) 
-	$(BUILD_DIR)/client
+	@$(CC) $(FLAGS) ./src/client.c -o $(BUILD_DIR)/client $(OBJS) 
+	@$(BUILD_DIR)/client
 
 
 

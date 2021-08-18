@@ -1,5 +1,28 @@
 #include "tju_tcp.h"
 
+
+int accept_handshake(tju_tcp_t* sock, tju_sock_addr target_addr) {
+    // three-way handshake in server end
+    printf("Connectting......");
+    while (sock->state != ESTABLISHED) {
+        // Get Packet
+        int header_len = 512;
+        char* buf = (char*)malloc(512 * sizeof(char));
+        tju_recv(sock, (void*)buf, header_len);
+        tju_packet_t* pkt = (tju_packet_t*) buf;
+        if (pkt->header.flags == SYN_SENT) {
+            
+        }else if(pkt->header.flags == ESTABLISHED) {
+            sock->state = ESTABLISHED;
+            return 0;
+        }
+    }
+}
+
+int connect_handshake(tju_tcp_t* sock, tju_sock_addr target_addr) {
+
+}
+
 /*
 创建 TCP socket 
 初始化对应的结构体
@@ -31,7 +54,7 @@ tju_tcp_t* tju_socket(){
 /*
 绑定监听的地址 包括ip和端口
 */
-int tju_bind(tju_tcp_t* sock, tju_sock_addr bind_addr){
+int tju_bind(tju_tcp_t* sock, tju_sock_addr bind_addr) {
     sock->bind_addr = bind_addr;
     return 0;
 }
@@ -54,7 +77,7 @@ int tju_listen(tju_tcp_t* sock){
 这里返回的socket一定是已经完成3次握手建立了连接的socket
 因为只要该函数返回, 用户就可以马上使用该socket进行send和recv
 */
-tju_tcp_t* tju_accept(tju_tcp_t* listen_sock){
+tju_tcp_t* tju_accept(tju_tcp_t* listen_sock) {
     tju_tcp_t* new_conn = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
     memcpy(new_conn, listen_sock, sizeof(tju_tcp_t));
 
@@ -134,6 +157,7 @@ int tju_send(tju_tcp_t* sock, const void *buffer, int len){
     
     return 0;
 }
+
 int tju_recv(tju_tcp_t* sock, void *buffer, int len){
     while(sock->received_len<=0){
         // 阻塞
