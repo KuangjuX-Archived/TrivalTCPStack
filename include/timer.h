@@ -2,16 +2,20 @@
 #define _TIMER_H_
 
 #include "kernel.h"
+#include "utils.h"
 
 #define ALPHA (1/8)
 #define BETA (1/4)
 
+// clock granularities
+#define CLOCK_G (0.1)
+
 typedef struct {
-    float srtt;
-    float rttvar;
-    float rt0;
+    float estimated_rtt;
+    float dev_rtt;
+    float timeout;
 } timer_t;
 
-timer_t* timers[MAX_SOCK];
+extern time_t* timers;
 
 #endif

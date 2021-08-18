@@ -1,17 +1,34 @@
 #include "timer.h"
 
-float max(float a, float b) {
-    return a > b ? a : b;
+timer_t* timers[MAX_SOCK];
+
+void timers_init(timer_t* timers) {
+    for (int i = 0; i < MAX_SOCK; i++) {
+        timer_init(&timers[i]);
+    }
 }
 
 void timer_init(timer_t* timer) {
-    timer->rt0 = 0;
-    timer->rttvar = 0;
-    timer->srtt = 0;
+    timer->timeout = 1;
+    timer->dev_rtt = 1;
+    timer->estimated_rtt = 1;
 }
 
-void timer_update(timer_t* timer, float r) {
-    timer->rttvar = (1 - BETA) * timer->rttvar + BETA * abs(timer->srtt - r);
-    timer->srtt = (1 - ALPHA) *  timer->srtt + ALPHA * r;
-    timer->rt0 = timer->srtt + max(3, 4 * timer->rttvar);
+void timer_update(timer_t* timer, float rtt) {
+    timer->estimated_rtt = (1 - ALPHA) *  timer->estimated_rtt + ALPHA * rtt;
+    timer->dev_rtt = (1 - BETA) * timer->dev_rtt + BETA * abs(timer->estimated_rtt - rtt);
+    /*  Passage in RFC6298
+        RTO <- SRTT + max (G, K*RTTVAR)
+        There is no requirement for the clock granularity G used for
+        computing RTT measurements and the different state variables.
+        However, if the K*RTTVAR term in the RTO calculation equals zero, the
+        variance term MUST be rounded to G seconds (i.e., use the equation
+        given in step 2.3).
+
+        RTO <- SRTT + max (G, K*RTTVAR)
+
+        Experience has shown that finer clock granularities (<= 100 msec)
+        perform somewhat better than coarser granularities.
+    */
+    timer->timeout = timer->estimated_rtt + max(CLOCK_G, 4 * timer->dev_rtt);
 }
