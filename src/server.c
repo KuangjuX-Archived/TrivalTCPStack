@@ -1,6 +1,10 @@
 #include "tju_tcp.h"
 #include <string.h>
 
+void handler() {
+
+}
+
 int main(int argc, char **argv) {
     // 开启仿真环境 
     startSimulation();
@@ -43,6 +47,13 @@ int main(int argc, char **argv) {
 
     tju_recv(new_conn, (void*)buf, 10);
     printf("server recv %s\n", buf);
+
+    // while (TRUE) {
+    //     tju_tcp_t* new_conn;
+    //     if (new_conn = tju_accept(my_server)) {
+    //         printf("client %s connect", new_conn->bind_addr);
+    //     }
+    // }
 
 
     return EXIT_SUCCESS;
