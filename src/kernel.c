@@ -126,6 +126,8 @@ void startSimulation(){
     for(index=0;index<MAX_SOCK;index++){
         listen_socks[index] = NULL;
         established_socks[index] = NULL;
+        sync_queue[index] = NULL;
+        accept_queue[index] = NULL;
     }
 
     // 获取hostname 

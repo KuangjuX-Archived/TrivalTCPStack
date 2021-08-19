@@ -214,14 +214,39 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
     uint8_t flags = get_flags(pkt);
     if (flags == SYN_SENT) {
         // Send packet && push semi_queue
+        tju_packet_t* pkt;
+        int pkt_size;
+        // TODO: create packet
+        sendToLayer3(pkt, pkt_size);
+        // update state
+        sock->state = SYN_SENT;
+        // push sync_queue
+        // TODO: count hash value
+        int hashval;
+        sync_queue[hashval] = sock;
     }else if (flags == SYN_RECV) {
         // Send packet && push semi_queue
+        tju_packet_t* pkt;
+        int pkt_size;
+
+        sendToLayer3(pkt, pkt_size);
     }else if(flags == ESTABLISHED) {
         // Check client/server by socket
-        if (sock->state == LISTEN) {
+        if (sock->state == SYN_SENT) {
             // server
+            tju_packet_t* pkt;
+            int pkt_size;
+
+            sendToLayer3(pkt, pkt_size);
+            sock->state = ESTABLISHED;
+
+            int hashval;
+            accept_queue[hashval] = sock;
         }else{
             // client
+            sock->state = ESTABLISHED;
+            int hashval;
+            accept_queue[hashval] = sock;
         }
     }
 
