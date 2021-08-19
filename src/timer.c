@@ -17,7 +17,7 @@ void timer_init(rtt_timer_t* timer) {
 void timer_update(rtt_timer_t* timer, float rtt) {
     timer->estimated_rtt = (1 - ALPHA) *  timer->estimated_rtt + ALPHA * rtt;
     timer->dev_rtt = (1 - BETA) * timer->dev_rtt + BETA * abs(timer->estimated_rtt - rtt);
-    /*  Passage in RFC6298
+    /*  From RFC6298
         RTO <- SRTT + max (G, K*RTTVAR)
         There is no requirement for the clock granularity G used for
         computing RTT measurements and the different state variables.

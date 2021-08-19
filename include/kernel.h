@@ -10,10 +10,15 @@
 tju_tcp_t* listen_socks[MAX_SOCK];
 tju_tcp_t* established_socks[MAX_SOCK];
 
+// Semi-connected queue
+tju_tcp_t* sync_queue[MAX_SOCK];
+// Fully-connected queue
+tju_tcp_t* accept_queue[MAX_SOCK];
+
 /*
 模拟Linux内核收到一份TCP报文的处理函数
 */
-void onTCPPocket(char* pkt);
+int onTCPPocket(char* pkt);
 
 
 /*

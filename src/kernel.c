@@ -2,7 +2,7 @@
 /*
 模拟Linux内核收到一份TCP报文的处理函数
 */
-void onTCPPocket(char* pkt){
+int onTCPPocket(char* pkt){
     // 当我们收到TCP包时 包中 源IP 源端口 是发送方的 也就是我们眼里的 远程(remote) IP和端口
     uint16_t remote_port = get_src(pkt);
     uint16_t local_port = get_dst(pkt);
@@ -26,19 +26,19 @@ void onTCPPocket(char* pkt){
     // 首先查找已经建立连接的socket哈希表
     if (established_socks[hashval]!=NULL){
         tju_handle_packet(established_socks[hashval], pkt);
-        return;
+        return 0;
     }
 
     // 没有的话再查找监听中的socket哈希表
     hashval = cal_hash(local_ip, local_port, 0, 0); //监听的socket只有本地监听ip和端口 没有远端
     if (listen_socks[hashval]!=NULL){
         tju_handle_packet(listen_socks[hashval], pkt);
-        return;
+        return 0;
     }
 
     // 都没找到 丢掉数据包
     printf("找不到能够处理该TCP数据包的socket, 丢弃该数据包\n");
-    return;
+    return -1;
 }
 
 
@@ -105,7 +105,9 @@ void* receive_thread(void* arg){
                 buf_size = buf_size + n;
             }
             // 通知内核收到一个完整的TCP报文
-            onTCPPocket(pkt);
+            if (onTCPPocket(pkt) < 0) {
+                printf("receive_thread: fail to depatch packets(onTCPPocket).\n");
+            }
             free(pkt);
         }
     }

@@ -24,8 +24,10 @@ docker network create --subnet=10.0.0.0/16 mynetwork
 Before create the server/client containers, you should know the **absolute path** of this project in your computer. 
 You can use the `pwd` command to get the path.
 
-And then we can run our container by static ip address and bind this project in a double-way between your host and containers:     
-**NOTICE!** Replace {project path on your host} by your path:
+And then we can run our container by static ip address and bind this project in a double-way between your host and containers:      
+
+**NOTICE!** Replace {project path on your host} by your path:    
+
 ```shell
 sudo docker run -itd --name server --net mynetwork --ip 10.0.0.3 --hostname server -v {project path on your host}:/tjutcp tcp /bin/bash
 sudo docker run -itd --name client --net mynetwork --ip 10.0.0.2 --hostname client -v {project path on your host}:/tjutcp tcp /bin/bash
@@ -38,6 +40,12 @@ The following commands could attach you in to each container:
 ````
 execute `make server` in server container and execute `make client` in client container under the `/tjutcp` folder, we can run the project easily.
 
+## Workflows:
+- [x] Environment
+- [x] Thread Pool
+- [x] Channel
+- [ ] System API: bind, listen, accept, recv, send
+
 ## Differnes
 We use `10.0.0.3` as server's ip address instead of `10.0.0.1` because this address is reported occupied.
 
@@ -49,4 +57,10 @@ Destroy all running containers:
 ```shell
 sudo docker container prune
 ```
+
+## References
+- RFC 793
+- RFC 1122
+- RFC 6298
+- [C-Thread-Pool](https://github.com/Pithikos/C-Thread-Pool)
 

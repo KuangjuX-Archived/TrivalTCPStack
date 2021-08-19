@@ -5,25 +5,6 @@
 #include "tju_packet.h"
 #include "kernel.h"
 
-/*
-    Three-way handshake in server,
-    return 0 success and -1 fail. 
-*/
-int accept_handshake(
-    tju_tcp_t* sock, 
-    tju_sock_addr local_addr,
-    tju_sock_addr target_addr
-);
-
-/*
-    Three-way handshake in client,
-    return 0 success and -1 fail. 
-*/
-int connect_handshake(
-    tju_tcp_t* sock, 
-    tju_sock_addr local_addr,
-    tju_sock_addr target_addr
-);
 
 /*
 创建 TCP socket 
