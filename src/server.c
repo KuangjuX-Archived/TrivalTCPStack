@@ -1,8 +1,20 @@
 #include "tju_tcp.h"
+#include "thpool.h"
 #include <string.h>
 
-void handler() {
+#define QUEUES 16
+#define SIZE 8192
 
+
+void echo(void* client) {
+    tju_tcp_t* socket = (tju_tcp_t*) client;
+    printf("Start receive client message.\n");
+    while (TRUE) {
+        char buf[512];
+        tju_recv(socket, (void*)buf, 512);
+        printf("%s\n", buf);
+        tju_send(socket, (void*)buf, 512);
+    }
 }
 
 int main(int argc, char **argv) {
@@ -16,45 +28,22 @@ int main(int argc, char **argv) {
     bind_addr.ip = inet_network("10.0.0.3");
     bind_addr.port = 1234;
 
+    // bind server ip
     tju_bind(my_server, bind_addr);
-
+    // listen server
     tju_listen(my_server);
-    // printf("my_server state %d\n", my_server->state);
-
-    tju_tcp_t* new_conn = tju_accept(my_server);
-    // printf("new_conn state %d\n", new_conn->state);      
-
-    // uint32_t conn_ip;
-    // uint16_t conn_port;
-
-    // conn_ip = new_conn->established_local_addr.ip;
-    // conn_port = new_conn->established_local_addr.port;
-    // printf("new_conn established_local_addr ip %d port %d\n", conn_ip, conn_port);
-
-    // conn_ip = new_conn->established_remote_addr.ip;
-    // conn_port = new_conn->established_remote_addr.port;
-    // printf("new_conn established_remote_addr ip %d port %d\n", conn_ip, conn_port);
-
-
+    // init thread pool
+    threadpool thpool = thpool_init(QUEUES);
     sleep(5);
-    
-    tju_send(new_conn, "hello world", 12);
-    tju_send(new_conn, "hello tju", 10);
+    // listen client connect
+    while (TRUE) {
+        tju_tcp_t* client = tju_accept(my_server);
+        thpool_add_work(thpool, echo, (void*)client);
+    }
 
-    char buf[2021];
-    tju_recv(new_conn, (void*)buf, 12);
-    printf("server recv %s\n", buf);
-
-    tju_recv(new_conn, (void*)buf, 10);
-    printf("server recv %s\n", buf);
-
-    // while (TRUE) {
-    //     tju_tcp_t* new_conn;
-    //     if (new_conn = tju_accept(my_server)) {
-    //         printf("client %s connect", new_conn->bind_addr);
-    //     }
-    // }
-
+	thpool_wait(thpool);
+	puts("Killing threadpool");
+	thpool_destroy(thpool);
 
     return EXIT_SUCCESS;
 }

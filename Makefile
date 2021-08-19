@@ -4,15 +4,15 @@ SRC_DIR = $(TOP_DIR)/src
 BUILD_DIR = $(TOP_DIR)/build
 
 CC = gcc
-FLAGS = -pthread -g -ggdb -DDEBUG -I$(INC_DIR)
+FLAGS = -pthread -g -ggdb -DDEBUG -I$(INC_DIR) -std=c11
 
 OBJS = $(BUILD_DIR)/tju_packet.o \
 	   $(BUILD_DIR)/kernel.o \
-	   $(BUILD_DIR)/tju_tcp.o 
-
-LIBS = $(BUILD_DIR)/tju_packet.c \
-	   $(BUILD_DIR)/kernel.c \
-	   $(BUILD_DIR)/tju_tcp.c
+	   $(BUILD_DIR)/tju_tcp.o \
+	   $(BUILD_DIR)/channel.o \
+	   $(BUILD_DIR)/timer.o \
+	   $(BUILD_DIR)/thpool.o \
+	   $(BUILD_DIR)/utils.o 
 
 
 

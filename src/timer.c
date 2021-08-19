@@ -1,20 +1,20 @@
 #include "timer.h"
 
-timer_t* timers[MAX_SOCK];
+struct timer_t* timers[MAX_SOCK];
 
-void timers_init(timer_t* timers) {
+void timers_init(rtt_timer_t* timers) {
     for (int i = 0; i < MAX_SOCK; i++) {
         timer_init(&timers[i]);
     }
 }
 
-void timer_init(timer_t* timer) {
+void timer_init(rtt_timer_t* timer) {
     timer->timeout = 1;
     timer->dev_rtt = 1;
     timer->estimated_rtt = 1;
 }
 
-void timer_update(timer_t* timer, float rtt) {
+void timer_update(rtt_timer_t* timer, float rtt) {
     timer->estimated_rtt = (1 - ALPHA) *  timer->estimated_rtt + ALPHA * rtt;
     timer->dev_rtt = (1 - BETA) * timer->dev_rtt + BETA * abs(timer->estimated_rtt - rtt);
     /*  Passage in RFC6298

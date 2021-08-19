@@ -1,7 +1,7 @@
 #include "channel.h"
 
 
-channel_t* channels;
+struct channel_t* channels;
 
 void chan_init() {
     pthread_mutex_init(&channels->lock, NULL);
@@ -18,7 +18,7 @@ int chan_send(char* buf, int len, char* ip) {
         return 0;
     }
     pthread_mutex_lock(&channels->lock);
-    list* node = channels->list;
+    struct list* node = channels->list;
 
     if (node->remote_ip != NULL) {
         while (node->next != NULL) {
@@ -26,7 +26,7 @@ int chan_send(char* buf, int len, char* ip) {
         }
     }
 
-    list* empty_node = (list*)malloc(sizeof(list));
+    struct list* empty_node = (struct list*)malloc(sizeof(struct list));
     char* data = (char*)malloc(len);
     strcpy(data, buf);
     char* remote_ip = (char*)malloc(32);
@@ -47,7 +47,7 @@ int chan_recv(char* buf, int len, char* ip) {
         printf("channels should be initialized");
     }
     pthread_mutex_lock(&channels->lock);
-    list* node = channels->list;
+    struct list* node = channels->list;
     while (node->next != NULL) {
         if (strcmp(node->remote_ip, ip)) {
             strcpy(buf, node->data);

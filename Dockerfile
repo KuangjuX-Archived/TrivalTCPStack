@@ -1,10 +1,5 @@
 FROM ubuntu:latest
 
-#WORKDIR /app
-
-#COPY . .
-
 RUN apt-get update \
     && apt install -y build-essential \
-    && apt install -y python3.8 \
-    && cd /app
+    && apt install -y python3.8

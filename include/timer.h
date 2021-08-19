@@ -10,12 +10,16 @@
 // clock granularities
 #define CLOCK_G (0.1)
 
-typedef struct {
+typedef struct rtt_timer_t {
     float estimated_rtt;
     float dev_rtt;
     float timeout;
-} timer_t;
+} rtt_timer_t;
 
-extern time_t* timers;
+// extern struct time_t* timers;
+
+void timers_init(rtt_timer_t* timers);
+void timer_init(rtt_timer_t* timer);
+void timer_update(rtt_timer_t* timer, float rtt);
 
 #endif

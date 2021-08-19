@@ -4,17 +4,18 @@
 #include <mqueue.h>
 #include "global.h"
 
-typedef struct {
+
+typedef struct list {
     char* remote_ip;
     char* data;
-    list* next;
-    list* prev;
+    struct list* next;
+    struct list* prev;
 } list;
 
-typedef struct {
+typedef struct channel_t {
     pthread_mutex_t lock;
     int initialized;
-    list* list;
+    struct list* list;
 } channel_t;
 
 
