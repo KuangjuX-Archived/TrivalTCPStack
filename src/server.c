@@ -22,7 +22,6 @@ int main(int argc, char **argv) {
     startSimulation();
 
     tju_tcp_t* my_server = tju_socket();
-    // printf("my_tcp state %d\n", my_server->state);
     
     tju_sock_addr bind_addr;
     bind_addr.ip = inet_network("10.0.0.3");

@@ -1,6 +1,8 @@
 #include "tju_tcp.h"
 
 
+
+
 /*
 创建 TCP socket 
 初始化对应的结构体
@@ -61,32 +63,38 @@ int accept(int sockfd, struct sockaddr *restrict addr,
 
 int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
     printf("Try to connect......");
+    conn_sock = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
+    memcpy(conn_sock, listen_sock, sizeof(tju_tcp_t));
     // listen tcp packet from ip layer.
     // If find a established connection, return status code,
     // else return 0.
-    for(int i=0; i<MAX_SOCK; i++) {
-        if (accept_queue[i] != NULL) {
-            tju_sock_addr local_addr, remote_addr;
 
-            local_addr.ip = listen_sock->bind_addr.ip;
-            local_addr.port = listen_sock->bind_addr.port;
-            remote_addr.ip = accept_queue[i]->bind_addr.ip;
-            remote_addr.port = accept_queue[i]->bind_addr.port;
-
-            conn_sock->established_local_addr = local_addr;
-            conn_sock->established_remote_addr = remote_addr;
-            conn_sock->state = ESTABLISHED;
-
-            // i count by hash algorithm
-            int hashval = i;
-            established_socks[hashval] = conn_sock;
-            accept_queue[i] = NULL;
-
-            // status code: find a connect socket
-            return 1;
-        }
+    // 如果全连接队列为空，则阻塞等待
+    while(is_empty(accept_socks)){}
+    tju_sock_addr local_addr, remote_addr;
+    tju_tcp_t* sock;
+    // 从全连接队列中取出第一个连接socket
+    int status = pop(accept_socks, sock);
+    if(status < 0) {
+        return TRUE;
     }
-    return 0;
+
+    // 为conn_sock更新信息
+    local_addr.ip = listen_sock->bind_addr.ip;
+    local_addr.port = listen_sock->bind_addr.port;
+    remote_addr.ip = sock->bind_addr.ip;
+    remote_addr.port = sock->bind_addr.port;
+
+    conn_sock->established_local_addr = local_addr;
+    conn_sock->established_remote_addr = remote_addr;
+    conn_sock->state = ESTABLISHED;
+
+    // 将客户端socket放入已建立连接的表中
+    int hashval = cal_hash(local_addr.ip, local_addr.port, remote_addr.ip, remote_addr.port);
+    established_socks[hashval] = conn_sock;
+
+    // status code: find a connect socket
+    return FALSE;
 }
 
 tju_tcp_t* tju_accept(tju_tcp_t* listen_sock) {
@@ -202,53 +210,13 @@ int tju_recv(tju_tcp_t* sock, void *buffer, int len){
     return 0;
 }
 
-
-// We'll handler three-way handshake here.
 int tju_handle_packet(tju_tcp_t* sock, char* pkt){
     
     uint32_t data_len = get_plen(pkt) - DEFAULT_HEADER_LEN;
+    // 这里要判断去处理三次握手和连接关闭的情况，这是不走缓冲区的过程
 
     // 把收到的数据放到接受缓冲区
     while(pthread_mutex_lock(&(sock->recv_lock)) != 0); // 加锁
-
-    uint8_t flags = get_flags(pkt);
-    if (flags == SYN_SENT) {
-        // Send packet && push semi_queue
-        tju_packet_t* pkt;
-        int pkt_size;
-        // TODO: create packet
-        sendToLayer3(pkt, pkt_size);
-        // update state
-        sock->state = SYN_SENT;
-        // push sync_queue
-        // TODO: count hash value
-        int hashval;
-        sync_queue[hashval] = sock;
-    }else if (flags == SYN_RECV) {
-        // Send packet && push semi_queue
-        tju_packet_t* pkt;
-        int pkt_size;
-
-        sendToLayer3(pkt, pkt_size);
-    }else if(flags == ESTABLISHED) {
-        // Check client/server by socket
-        if (sock->state == SYN_SENT) {
-            // server
-            tju_packet_t* pkt;
-            int pkt_size;
-
-            sendToLayer3(pkt, pkt_size);
-            sock->state = ESTABLISHED;
-
-            int hashval;
-            accept_queue[hashval] = sock;
-        }else{
-            // client
-            sock->state = ESTABLISHED;
-            int hashval;
-            accept_queue[hashval] = sock;
-        }
-    }
 
     if(sock->received_buf == NULL){
         sock->received_buf = malloc(data_len);
@@ -266,4 +234,64 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
 
 int tju_close (tju_tcp_t* sock){
     return 0;
+}
+
+int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
+    uint8_t flags = get_flags(pkt);
+    // 通过socket状态进行处理
+    switch (sock->state) {
+        case CLOSED:
+            // 关闭状态，不能接受任何消息
+            printf("closed state can't receive messages.\n");
+            return 0;
+        case LISTEN:
+            // 判断packet flags 是否为 SYN_SENT 并判断ack的值
+            if (flags == SYN_SENT) {
+                // 第二次握手，服务端修改自己的状态，
+                // 并且发送 SYN_RECV 标志的pakcet，
+                // 加入到半连接哈希表中（暂时不考虑重置状态）                
+                // 这里应当构建客户端socket, 从而可以加入到syns_socks中
+                tju_tcp_t* conn_sock = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
+                conn_sock->bind_addr.ip = conn_addr->ip;
+                conn_sock->bind_addr.port = conn_addr->port;
+                // 修改服务端socket的状态
+                sock->state = SYN_SENT;
+                // 加入到半连接哈希表中
+                int index = push(syns_socks, sock);
+                if (index < 0) {
+                    printf("fail to push syns_socks.\n");
+                }
+                // 将syn_id存储进服务器socket中
+                sock->saved_syn = index;
+                // 创建带有状态的packet
+                char* recv_pkt = build_state_pkt(pkt, SYN_RECV);
+                // 发送packet到客户端
+            } else {
+                // 当flags不是SYN_SENT，暂时忽略
+                printf("TrivialTCP should receive SYN_SENT pakcet.\n");
+            }
+        case SYN_SENT:
+            if (flags == ESTABLISHED) {
+                // 第三次握手，服务端发送ACK报文， 服务端将自己的socket变为ESTABLISHED，
+                // 从syns_socks取出对应的socket并加入到accept_socks中
+                sock->state = ESTABLISHED;
+                // 获取半连接队列的id
+                int index = sock->saved_syn;
+                // 获取半连接socket
+                tju_tcp_t* conn_sock;
+                queue_remove(syns_socks, conn_sock, index);
+                push(accept_socks, sock);
+            } else {
+                // 当flags不是ESTABLSHED时，暂时忽略
+                printf("TrivialTCP should receive ESTABLISHED packet.\n");
+            }
+    }
+}
+
+int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt) {
+
+}
+
+int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
+
 }

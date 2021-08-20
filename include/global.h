@@ -117,6 +117,8 @@ typedef struct {
 
 	window_t window; // 发送和接受窗口
 
+	int saved_syn;
+
 } tju_tcp_t;
 
 extern char* client_ip;

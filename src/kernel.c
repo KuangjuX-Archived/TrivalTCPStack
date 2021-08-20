@@ -126,9 +126,10 @@ void startSimulation(){
     for(index=0;index<MAX_SOCK;index++){
         listen_socks[index] = NULL;
         established_socks[index] = NULL;
-        sync_queue[index] = NULL;
-        accept_queue[index] = NULL;
     }
+    // 初始化半连接队列和全连接队列
+    queue_init(syns_socks);
+    queue_init(accept_socks);
 
     // 获取hostname 
     char hostname[8];
