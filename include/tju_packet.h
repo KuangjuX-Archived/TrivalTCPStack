@@ -61,7 +61,7 @@ char* create_packet_buf(uint16_t src, uint16_t dst, uint32_t seq, uint32_t ack,
     uint8_t ext, char* data, int len);
 
 // 根据接受到的packet构造发送的packet，返回packet的len
-int build_state_pkt(char* recv_pkt, char* send_pkt, int flags);
+int build_state_pkt(char* recv_pkt, char** send_pkt, int flags);
 
 /*
  清除一个tju_packet_t的内存占用

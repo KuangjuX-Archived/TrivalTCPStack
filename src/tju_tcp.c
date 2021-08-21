@@ -68,12 +68,15 @@ int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
     // 如果全连接队列为空，则阻塞等待
     printf("Blocking...\n");
     while(is_empty(accept_socks)){}
+
+    printf("Find a socket in accept_socks.\n");
     tju_sock_addr local_addr, remote_addr;
     tju_tcp_t* sock;
     // 从全连接队列中取出第一个连接socket
     int status = pop(accept_socks, sock);
+
     if(status < 0) {
-        return TRUE;
+        return -1;
     }
 
     // 为conn_sock更新信息
@@ -89,9 +92,10 @@ int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
     // 将客户端socket放入已建立连接的表中
     int hashval = cal_hash(local_addr.ip, local_addr.port, remote_addr.ip, remote_addr.port);
     established_socks[hashval] = conn_sock;
+    printf("Connection established.\n");
 
     // status code: find a connect socket
-    return FALSE;
+    return 0;
 }
 
 
@@ -110,6 +114,9 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
     local_addr.ip = inet_network("10.0.0.2");
     local_addr.port = 5678; // 连接方进行connect连接的时候 内核中是随机分配一个可用的端口
     sock->established_local_addr = local_addr;
+
+    // 修改socket的状态
+    sock->state = SYN_SENT;
 
     // 将待连接socket存储入哈希表中
     int hashval = cal_hash(
@@ -248,21 +255,27 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 tju_tcp_t* conn_sock = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
                 conn_sock->bind_addr.ip = conn_addr->ip;
                 conn_sock->bind_addr.port = conn_addr->port;
+                printf("Create client socket.\n");
+
                 // 修改服务端socket的状态
                 sock->state = SYN_SENT;
+
                 // 加入到半连接哈希表中
                 int index = push(syns_socks, sock);
                 if (index < 0) {
                     printf("fail to push syns_socks.\n");
+                    return -1;
                 }
+                printf("Push syns_socks.\n");
+
                 // 将syn_id存储进服务器socket中
                 sock->saved_syn = index;
                 // 创建带有状态的packet
                 char* send_pkt;
-                int len = build_state_pkt(pkt, send_pkt, SYN_RECV);
+                int len = build_state_pkt(pkt, &send_pkt, SYN_RECV);
                 // 发送packet到客户端
-                printf("send SYN_RECV to layer3.\n");
                 sendToLayer3(send_pkt, len);
+                printf("send SYN_RECV to layer3.\n");
                 return 0;
             } else {
                 // 当flags不是SYN_SENT，暂时忽略
@@ -277,12 +290,14 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 sock->state = ESTABLISHED;
                 // 获取半连接队列的id
                 int index = sock->saved_syn;
+                printf("saved syn index: %d.\n", index);
                 // 获取半连接socket
                 tju_tcp_t* conn_sock;
                 queue_remove(syns_socks, conn_sock, index);
                 // 将半连接socket放到全连接socket中
                 conn_sock->state = ESTABLISHED;
                 push(accept_socks, sock);
+                printf("Push socket into accept socks.\n");
                 return 0;
             } else {
                 // 当flags不是ESTABLSHED时，暂时忽略

@@ -39,7 +39,11 @@ int main(int argc, char **argv) {
 
     printf("Try to accept client.\n");
     tju_tcp_t* conn_sock;
-    tcp_accept(my_server, conn_sock);
+    int status = tcp_accept(my_server, conn_sock);
+    if(status < 0) {
+        printf("Fail to accept.\n");
+    }
+    
     char buf[512];
     tju_recv(my_server, (void*)buf, 512);
     printf("%s\n", buf);

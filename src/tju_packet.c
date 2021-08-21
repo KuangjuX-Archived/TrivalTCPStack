@@ -54,17 +54,17 @@ char* create_packet_buf(uint16_t src, uint16_t dst, uint32_t seq, uint32_t ack,
 }
 
 // 根据接受到的packet构造发送的packet，返回packet的len
-int build_state_pkt(char* recv_pkt, char* send_pkt, int flags) {
+int build_state_pkt(char* recv_pkt, char** send_pkt, int flags) {
     int seq = get_seq(recv_pkt) + 464;
     int ack = get_seq(recv_pkt) + 1;
     int len = 20;
-    send_pkt = create_packet_buf(
+    *send_pkt = create_packet_buf(
         get_dst(recv_pkt),
         get_src(recv_pkt),
         seq,
         ack,
-        len,
-        len,
+        20,
+        20,
         flags,
         0,
         0,

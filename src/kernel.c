@@ -7,7 +7,6 @@ int onTCPPocket(char* pkt){
     uint16_t remote_port = get_src(pkt);
     uint16_t local_port = get_dst(pkt);
     // remote ip 和 local ip 是读IP 数据包得到的 仿真的话这里直接根据hostname判断
-
     // 获取是server还是client
     int is_server;
     char hostname[8];
@@ -28,7 +27,7 @@ int onTCPPocket(char* pkt){
     hashval = cal_hash(local_ip, local_port, remote_ip, remote_port);
     
     // 首先查找已经建立连接的socket哈希表
-    if (established_socks[hashval]!=NULL){
+    if (established_socks[hashval] != NULL){
         tju_handle_packet(established_socks[hashval], pkt);
         return 0;
     }
