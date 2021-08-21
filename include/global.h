@@ -53,21 +53,24 @@
 // TCP 接受窗口大小
 #define TCP_RECVWN_SIZE 32*MAX_DLEN // 比如最多放32个满载数据包
 
+// TCP改进窗口算法的阈值
+#define IMPROVED_WINDOW_THRESHOLD 0.25
+
 // TCP 发送窗口
 // 注释的内容如果想用就可以用 不想用就删掉 仅仅提供思路和灵感
 typedef struct {
 	uint16_t window_size;
 
 //   uint32_t base;
-//   uint32_t nextseq;
-//   uint32_t estmated_rtt;
-//   int ack_cnt;
+   uint32_t nextseq;
+   uint32_t estmated_rtt;
+   int ack_cnt;
 //   pthread_mutex_t ack_cnt_lock;
 //   struct timeval send_time;
 //   struct timeval timeout;
-//   uint16_t rwnd; 
+   uint16_t rwnd;
 //   int congestion_status;
-//   uint16_t cwnd; 
+//   uint16_t cwnd;
 //   uint16_t ssthresh; 
 } sender_window_t;
 

@@ -1,6 +1,8 @@
 #include "tju_tcp.h"
 
 
+int handle_improved_window();
+
 int accept_handshake(
     tju_tcp_t* sock, 
     tju_sock_addr local_addr,
@@ -217,12 +219,20 @@ int tju_connect(tju_tcp_t* sock, tju_sock_addr target_addr){
 
 int tju_send(tju_tcp_t* sock, const void *buffer, int len){
     // 这里当然不能直接简单地调用sendToLayer3
+
+    int send_flag=handle_improved_window(sock,buffer,len);
+
     char* data = malloc(len);
     memcpy(data, buffer, len);
 
     char* msg;
     uint32_t seq = 464;
     uint16_t plen = DEFAULT_HEADER_LEN + len;
+
+    if(send_flag){
+        // 窗口控制算法抑制传输
+        return 0;
+    }
 
     msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 
               DEFAULT_HEADER_LEN, plen, NO_FLAG, 1, 0, data, len);
@@ -286,5 +296,20 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
 }
 
 int tju_close (tju_tcp_t* sock){
+    return 0;
+}
+
+int handle_improved_window(tju_tcp_t* sock, const void *buffer, int len) {
+    uint16_t useable_wnd; // 发送方计算的接收方可用的窗口大小
+    useable_wnd=sock->window.wnd_send->rwnd-(sock->window.wnd_send->nextseq- sock->window.wnd_send->ack_cnt);
+    float empty_rate=(float)useable_wnd/(sock->window.wnd_send->rwnd-useable_wnd);
+    int return_flag=1;
+    if (empty_rate<IMPROVED_WINDOW_THRESHOLD){
+        return_flag=0;
+    }
+    return return_flag;
+}
+
+int handle_improved_ack(tju_tcp_t* sock){
     return 0;
 }
