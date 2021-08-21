@@ -128,6 +128,30 @@ tju_tcp_t* tju_accept(tju_tcp_t* listen_sock) {
     return new_conn;
 }
 
+int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
+    sock->established_remote_addr = target_addr;
+
+    tju_sock_addr local_addr;
+    local_addr.ip = inet_network("10.0.0.2");
+    local_addr.port = 5678; // 连接方进行connect连接的时候 内核中是随机分配一个可用的端口
+    sock->established_local_addr = local_addr;
+
+    // 这里发送SYN_SENT packet向服务端发送请求
+
+    // 这里阻塞直到socket的状态变为ESTABLISHED
+    while(sock->state != ESTABLISHED){}
+    
+    // 将连接后的socket放入哈希表中
+    int hashval = cal_hash(
+        local_addr.ip, 
+        local_addr.port, 
+        sock->established_remote_addr.ip, 
+        sock->established_remote_addr.port
+    );
+    established_socks[hashval] = sock;
+
+    return 0;
+}
 
 /*
 连接到服务端
@@ -300,6 +324,13 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
     uint8_t flags = get_flags(pkt);
     switch(flags) {
         case SYN_RECV:
+            if(sock->state == SYN_SENT) {
+                sock->state = ESTABLISHED;
+
+            }else {
+                printf("error status.\n");
+                return -1;
+            }
         default:
             printf("Unresolved status.\n");
             return -1;
