@@ -8,15 +8,19 @@ int onTCPPocket(char* pkt){
     uint16_t local_port = get_dst(pkt);
     // remote ip 和 local ip 是读IP 数据包得到的 仿真的话这里直接根据hostname判断
 
+    // 获取是server还是client
+    int is_server;
     char hostname[8];
     gethostname(hostname, 8);
     uint32_t remote_ip, local_ip;
     if(strcmp(hostname,"server")==0){ // 自己是服务端 远端就是客户端
         local_ip = inet_network("10.0.0.3");
         remote_ip = inet_network("10.0.0.2");
+        is_server = 1;
     }else if(strcmp(hostname,"client")==0){ // 自己是客户端 远端就是服务端 
         local_ip = inet_network("10.0.0.2");
         remote_ip = inet_network("10.0.0.3");
+        is_server = 0;
     }
 
     int hashval;
@@ -29,11 +33,20 @@ int onTCPPocket(char* pkt){
         return 0;
     }
 
+    tju_sock_addr* conn_addr;
+    conn_addr->ip = remote_ip;
+    conn_addr->port = remote_port;
+
     // 没有的话再查找监听中的socket哈希表
     hashval = cal_hash(local_ip, local_port, 0, 0); //监听的socket只有本地监听ip和端口 没有远端
     if (listen_socks[hashval]!=NULL){
-        tju_handle_packet(listen_socks[hashval], pkt);
-        return 0;
+        // tju_handle_packet(listen_socks[hashval], pkt);
+        // return 0;
+        if(is_server) {
+            tcp_rcv_state_server(listen_socks[hashval], pkt, conn_addr);
+        }else {
+            tcp_rcv_state_client(listen_socks[hashval], pkt, conn_addr);
+        }
     }
 
     // 都没找到 丢掉数据包

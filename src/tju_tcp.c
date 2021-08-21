@@ -1,8 +1,5 @@
 #include "tju_tcp.h"
 
-
-
-
 /*
 创建 TCP socket 
 初始化对应的结构体
@@ -243,7 +240,7 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
         case CLOSED:
             // 关闭状态，不能接受任何消息
             printf("closed state can't receive messages.\n");
-            return 0;
+            return -1;
         case LISTEN:
             // 判断packet flags 是否为 SYN_SENT 并判断ack的值
             if (flags == SYN_SENT) {
@@ -264,11 +261,15 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 // 将syn_id存储进服务器socket中
                 sock->saved_syn = index;
                 // 创建带有状态的packet
-                char* recv_pkt = build_state_pkt(pkt, SYN_RECV);
+                char* send_pkt;
+                int len = build_state_pkt(pkt, send_pkt, SYN_RECV);
                 // 发送packet到客户端
+                sendToLayer3(send_pkt, len);
+                return 0;
             } else {
                 // 当flags不是SYN_SENT，暂时忽略
                 printf("TrivialTCP should receive SYN_SENT pakcet.\n");
+                return -1;
             }
         case SYN_SENT:
             if (flags == ESTABLISHED) {
@@ -280,16 +281,29 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 // 获取半连接socket
                 tju_tcp_t* conn_sock;
                 queue_remove(syns_socks, conn_sock, index);
+                // 将半连接socket放到全连接socket中
+                conn_sock->state = ESTABLISHED;
                 push(accept_socks, sock);
+                return 0;
             } else {
                 // 当flags不是ESTABLSHED时，暂时忽略
                 printf("TrivialTCP should receive ESTABLISHED packet.\n");
+                return -1;
             }
+        default:
+            printf("Unresolved status");
+            return -1;
     }
 }
 
-int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt) {
-
+int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
+    uint8_t flags = get_flags(pkt);
+    switch(flags) {
+        case SYN_RECV:
+        default:
+            printf("Unresolved status.\n");
+            return -1;
+    }
 }
 
 int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
