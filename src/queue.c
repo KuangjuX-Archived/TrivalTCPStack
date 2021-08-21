@@ -19,11 +19,13 @@ int push(sock_queue* q, tju_tcp_t* sock) {
     if (q->size == MAX_QUEUE) {
         return -1;
     }
+
     sock_node* node = q->base;
     if(node == NULL) {
         node = (sock_node*)malloc(sizeof(sock_node));
         node->data = sock;
         node->next = NULL;
+        q->size += 1;
         return 0;
     }
 
@@ -36,8 +38,12 @@ int push(sock_queue* q, tju_tcp_t* sock) {
     new_node->data = sock;
     new_node->next = NULL;
     node->next = new_node;
+
+    q->size += 1;
+    printf("the size of queue is %d.\n", q->size);
+
     // 返回当前节点的id
-    return q->size++;
+    return q->size - 1;
 }
 
 int pop(sock_queue* q, tju_tcp_t* sock) {
@@ -49,6 +55,7 @@ int pop(sock_queue* q, tju_tcp_t* sock) {
     sock_node* node = q->base;
     q->base = node->next;
     *sock = *(node->data);
+    q->size -= 1;
     return 0;
 }
 
@@ -81,6 +88,7 @@ int queue_remove(sock_queue* q, tju_tcp_t* sock, int index) {
     prev->next = node->next;
     *sock = *(node->data);
     free(node);
+    q->size -= 1;
 
     return 0;
 }

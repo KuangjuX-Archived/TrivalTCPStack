@@ -158,6 +158,10 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
     );
     established_socks[hashval] = sock;
 
+    // 恢复连接表
+    connect_socks[hashval] = NULL;
+
+    printf("Client connect success.\n");
     return 0;
 }
 
@@ -284,16 +288,16 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
             }
         case SYN_SENT:
             if (flags == ESTABLISHED) {
-                printf("receive client status: ESTABLISHED.\n");
+                printf("Receive client status: ESTABLISHED.\n");
                 // 第三次握手，服务端发送ACK报文， 服务端将自己的socket变为ESTABLISHED，
                 // 从syns_socks取出对应的socket并加入到accept_socks中
                 sock->state = ESTABLISHED;
                 // 获取半连接队列的id
                 int index = sock->saved_syn;
-                printf("saved syn index: %d.\n", index);
                 // 获取半连接socket
                 tju_tcp_t* conn_sock;
                 queue_remove(syns_socks, conn_sock, index);
+                // pop(syns_socks, conn_sock);
                 // 将半连接socket放到全连接socket中
                 conn_sock->state = ESTABLISHED;
                 push(accept_socks, sock);
@@ -305,7 +309,8 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 return -1;
             }
         default:
-            printf("Unresolved status");
+            
+            printf("Unresolved status: %d\n", flags);
             return -1;
     }
 }
@@ -315,7 +320,7 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
     switch(flags) {
         case SYN_RECV:
             if(sock->state == SYN_SENT) {
-                printf("receive server status SYN_SENT.\n");
+                printf("Receive server status SYN_SENT.\n");
                 // 随便编的seq
                 int seq = get_seq(pkt) + 464;
                 int ack = get_seq(pkt) + 1;
@@ -338,13 +343,13 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
                 sendToLayer3(send_pkt, 20);
                 // 将socket的状态变为ESTABLISHED
                 sock->state = ESTABLISHED;
-
+                return 0;
             }else {
                 printf("error status.\n");
                 return -1;
             }
         default:
-            printf("Unresolved status.\n");
+            printf("Unresolved status: %d\n", flags);
             return -1;
     }
 }

@@ -3,6 +3,7 @@
 模拟Linux内核收到一份TCP报文的处理函数
 */
 int onTCPPocket(char* pkt){
+    printf("Receive packet from layer3.\n");
     // 当我们收到TCP包时 包中 源IP 源端口 是发送方的 也就是我们眼里的 远程(remote) IP和端口
     uint16_t remote_port = get_src(pkt);
     uint16_t local_port = get_dst(pkt);
@@ -41,14 +42,14 @@ int onTCPPocket(char* pkt){
     // 没有的话再查找监听中的socket哈希表
     if (listen_socks[hashval] != NULL && is_server) {
         // 监听的socket只有本地监听ip和端口 没有远端
-        printf("server receive status packet.\n");
-        tcp_rcv_state_server(listen_socks[hashval], pkt, &conn_addr);
+        printf("Server receive status packet.\n");
+        return tcp_rcv_state_server(listen_socks[hashval], pkt, &conn_addr);
     }
 
     hashval = cal_hash(local_ip, local_port, remote_ip, remote_port);
     if (connect_socks[hashval] != NULL && !is_server) {
-        printf("client receive status packet.\n");
-        tcp_rcv_state_client(connect_socks[hashval], pkt, &conn_addr);
+        printf("Client receive status packet.\n");
+        return tcp_rcv_state_client(connect_socks[hashval], pkt, &conn_addr);
     }
 
     // 都没找到 丢掉数据包
@@ -123,7 +124,7 @@ void* receive_thread(void* arg){
             if (onTCPPocket(pkt) < 0) {
                 printf("receive_thread: fail to depatch packets(onTCPPocket).\n");
             }
-            free(pkt);
+            // free(pkt);
         }
     }
 }

@@ -16,17 +16,17 @@ int main(int argc, char **argv) {
     // tju_connect(my_socket, target_addr);
     tcp_connect(my_socket, target_addr);
 
-    sleep(3);
+    // sleep(3);
 
-    tju_send(my_socket, "hello world", 12);
-    tju_send(my_socket, "hello tju", 10);
+    // tju_send(my_socket, "hello world", 12);
+    // tju_send(my_socket, "hello tju", 10);
 
-    char buf[2021];
-    tju_recv(my_socket, (void*)buf, 12);
-    printf("client recv %s\n", buf);
+    // char buf[2021];
+    // tju_recv(my_socket, (void*)buf, 12);
+    // printf("client recv %s\n", buf);
 
-    tju_recv(my_socket, (void*)buf, 10);
-    printf("client recv %s\n", buf);
+    // tju_recv(my_socket, (void*)buf, 10);
+    // printf("client recv %s\n", buf);
 
     return EXIT_SUCCESS;
 }
