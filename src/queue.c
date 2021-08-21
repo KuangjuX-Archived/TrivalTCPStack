@@ -1,16 +1,17 @@
 #include "queue.h"
 
-void queue_init(sock_queue* q) {
-    q = (sock_queue*)malloc(sizeof(sock_queue));
-    q->size = 0;
-    q->base = NULL;
+void queue_init(sock_queue** q) {
+    printf("init queue......\n");
+    *q = (sock_queue*)malloc(sizeof(sock_queue));
+    (*q)->size = 0;
+    (*q)->base = NULL;
 }
 
 int size(sock_queue* q) {
     return q->size;
 }
 
-int empty(sock_queue* q) {
+int is_empty(sock_queue* q) {
     return q->size == 0;
 }
 
@@ -33,7 +34,7 @@ int push(sock_queue* q, tju_tcp_t* sock) {
 }
 
 int pop(sock_queue* q, tju_tcp_t* sock) {
-    if(empty(q)) {
+    if(is_empty(q)) {
         // 队列为空，返回-1
         return -1;
     }
@@ -46,7 +47,7 @@ int pop(sock_queue* q, tju_tcp_t* sock) {
 
 
 int queue_remove(sock_queue* q, tju_tcp_t* sock, int index) {
-    if(empty(q)) {
+    if(is_empty(q)) {
         return -1;
     }
     sock_node* node = q->base;

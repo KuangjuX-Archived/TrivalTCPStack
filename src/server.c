@@ -19,8 +19,10 @@ void echo(void* client) {
 
 int main(int argc, char **argv) {
     // 开启仿真环境 
+    printf("Start simulation.\n");
     startSimulation();
 
+    printf("create server socket.\n");
     tju_tcp_t* my_server = tju_socket();
     
     tju_sock_addr bind_addr;
@@ -28,21 +30,22 @@ int main(int argc, char **argv) {
     bind_addr.port = 1234;
 
     // bind server ip
+    printf("bind server address.\n");
     tju_bind(my_server, bind_addr);
-    // listen server
-    tju_listen(my_server);
-    // init thread pool
-    threadpool thpool = thpool_init(QUEUES);
-    sleep(5);
-    // listen client connect
-    while (TRUE) {
-        tju_tcp_t* client = tju_accept(my_server);
-        thpool_add_work(thpool, echo, (void*)client);
-    }
 
-	thpool_wait(thpool);
-	puts("Killing threadpool");
-	thpool_destroy(thpool);
+    // listen server
+    printf("listen server address.\n");
+    tju_listen(my_server);
+
+    printf("Try to accept client.\n");
+    tju_tcp_t* conn_sock;
+    tcp_accept(my_server, conn_sock);
+    char buf[512];
+    tju_recv(my_server, (void*)buf, 512);
+    printf("%s\n", buf);
+    tju_send(my_server, (void*)buf, 512);
+
+    
 
     return EXIT_SUCCESS;
 }

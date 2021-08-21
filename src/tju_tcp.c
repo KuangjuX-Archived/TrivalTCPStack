@@ -1,4 +1,6 @@
 #include "tju_tcp.h"
+#include "queue.h"
+
 
 /*
 创建 TCP socket 
@@ -59,14 +61,12 @@ int accept(int sockfd, struct sockaddr *restrict addr,
 */
 
 int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
-    printf("Try to connect......");
+    printf("Try to connect......\n");
     conn_sock = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
     memcpy(conn_sock, listen_sock, sizeof(tju_tcp_t));
-    // listen tcp packet from ip layer.
-    // If find a established connection, return status code,
-    // else return 0.
 
     // 如果全连接队列为空，则阻塞等待
+    printf("Blocking...\n");
     while(is_empty(accept_socks)){}
     tju_sock_addr local_addr, remote_addr;
     tju_tcp_t* sock;
@@ -94,64 +94,6 @@ int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
     return FALSE;
 }
 
-tju_tcp_t* tju_accept(tju_tcp_t* listen_sock) {
-    tju_tcp_t* new_conn = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
-    memcpy(new_conn, listen_sock, sizeof(tju_tcp_t));
-
-    tju_sock_addr local_addr, remote_addr;
-    /*
-     这里涉及到TCP连接的建立
-     正常来说应该是收到客户端发来的SYN报文
-     从中拿到对端的IP和PORT
-     换句话说 下面的处理流程其实不应该放在这里 应该在tju_handle_packet中
-    */ 
-    remote_addr.ip = inet_network("10.0.0.2");  //具体的IP地址
-    remote_addr.port = 5678;  //端口
-
-    local_addr.ip = listen_sock->bind_addr.ip;  //具体的IP地址
-    local_addr.port = listen_sock->bind_addr.port;  //端口
-
-    new_conn->established_local_addr = local_addr;
-    new_conn->established_remote_addr = remote_addr;
-
-    // 这里应该是经过三次握手后才能修改状态为ESTABLISHED
-    new_conn->state = ESTABLISHED;
-
-    // 将新的conn放到内核建立连接的socket哈希表中
-    int hashval = cal_hash(local_addr.ip, local_addr.port, remote_addr.ip, remote_addr.port);
-    established_socks[hashval] = new_conn;
-
-    // 如果new_conn的创建过程放到了tju_handle_packet中 那么accept怎么拿到这个new_conn呢
-    // 在linux中 每个listen socket都维护一个已经完成连接的socket队列
-    // 每次调用accept 实际上就是取出这个队列中的一个元素
-    // 队列为空,则阻塞 
-    return new_conn;
-}
-
-int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
-    sock->established_remote_addr = target_addr;
-
-    tju_sock_addr local_addr;
-    local_addr.ip = inet_network("10.0.0.2");
-    local_addr.port = 5678; // 连接方进行connect连接的时候 内核中是随机分配一个可用的端口
-    sock->established_local_addr = local_addr;
-
-    // 这里发送SYN_SENT packet向服务端发送请求
-
-    // 这里阻塞直到socket的状态变为ESTABLISHED
-    while(sock->state != ESTABLISHED){}
-    
-    // 将连接后的socket放入哈希表中
-    int hashval = cal_hash(
-        local_addr.ip, 
-        local_addr.port, 
-        sock->established_remote_addr.ip, 
-        sock->established_remote_addr.port
-    );
-    established_socks[hashval] = sock;
-
-    return 0;
-}
 
 /*
 连接到服务端
@@ -160,8 +102,8 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
 函数正常返回后, 该socket一定是已经完成了3次握手, 建立了连接
 因为只要该函数返回, 用户就可以马上使用该socket进行send和recv
 */
-int tju_connect(tju_tcp_t* sock, tju_sock_addr target_addr){
-
+int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
+    printf("Start connecting......\n");
     sock->established_remote_addr = target_addr;
 
     tju_sock_addr local_addr;
@@ -169,14 +111,44 @@ int tju_connect(tju_tcp_t* sock, tju_sock_addr target_addr){
     local_addr.port = 5678; // 连接方进行connect连接的时候 内核中是随机分配一个可用的端口
     sock->established_local_addr = local_addr;
 
-    // 这里也不能直接建立连接 需要经过三次握手
-    // 实际在linux中 connect调用后 会进入一个while循环
-    // 循环跳出的条件是socket的状态变为ESTABLISHED 表面看上去就是 正在连接中 阻塞
-    // 而状态的改变在别的地方进行 在我们这就是tju_handle_packet
-    sock->state = ESTABLISHED;
+    // 将待连接socket存储入哈希表中
+    int hashval = cal_hash(
+        local_addr.ip,
+        local_addr.port,
+        target_addr.ip,
+        target_addr.port
+    );
+    connect_socks[hashval] = sock;
 
-    // 将建立了连接的socket放入内核 已建立连接哈希表中
-    int hashval = cal_hash(local_addr.ip, local_addr.port, target_addr.ip, target_addr.port);
+    // 创建客户端socket并将其加入到哈希表中
+    // 这里发送SYN_SENT packet向服务端发送请求
+    char* send_pkt = create_packet_buf(
+        local_addr.port,
+        target_addr.port,
+        0,
+        0,
+        20,
+        20,
+        SYN_SENT,
+        0,
+        0,
+        NULL,
+        0
+    );
+    sendToLayer3(send_pkt, 20);
+    printf("send SYN_SENT to layer3.\n");
+
+    // 这里阻塞直到socket的状态变为ESTABLISHED
+    printf("Connection block......\n");
+    while(sock->state != ESTABLISHED){}
+
+    // 将连接后的socket放入哈希表中
+    hashval = cal_hash(
+        local_addr.ip, 
+        local_addr.port, 
+        sock->established_remote_addr.ip, 
+        sock->established_remote_addr.port
+    );
     established_socks[hashval] = sock;
 
     return 0;
@@ -268,6 +240,7 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
         case LISTEN:
             // 判断packet flags 是否为 SYN_SENT 并判断ack的值
             if (flags == SYN_SENT) {
+                printf("receive client status: SYN_SENT.\n");
                 // 第二次握手，服务端修改自己的状态，
                 // 并且发送 SYN_RECV 标志的pakcet，
                 // 加入到半连接哈希表中（暂时不考虑重置状态）                
@@ -288,6 +261,7 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 char* send_pkt;
                 int len = build_state_pkt(pkt, send_pkt, SYN_RECV);
                 // 发送packet到客户端
+                printf("send SYN_RECV to layer3.\n");
                 sendToLayer3(send_pkt, len);
                 return 0;
             } else {
@@ -297,6 +271,7 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
             }
         case SYN_SENT:
             if (flags == ESTABLISHED) {
+                printf("receive client status: ESTABLISHED.\n");
                 // 第三次握手，服务端发送ACK报文， 服务端将自己的socket变为ESTABLISHED，
                 // 从syns_socks取出对应的socket并加入到accept_socks中
                 sock->state = ESTABLISHED;
@@ -325,6 +300,28 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
     switch(flags) {
         case SYN_RECV:
             if(sock->state == SYN_SENT) {
+                printf("receive server status SYN_SENT.\n");
+                // 随便编的seq
+                int seq = get_seq(pkt) + 464;
+                int ack = get_seq(pkt) + 1;
+                // 头部长度
+                int len = 20;
+                // 构建packet发送给服务端
+                char* send_pkt = create_packet_buf(
+                    sock->established_local_addr.port,
+                    conn_sock->port,
+                    seq,
+                    ack,
+                    20,
+                    20,
+                    ESTABLISHED,
+                    0,
+                    0,
+                    NULL,
+                    0
+                );
+                sendToLayer3(send_pkt, 20);
+                // 将socket的状态变为ESTABLISHED
                 sock->state = ESTABLISHED;
 
             }else {
@@ -335,8 +332,4 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
             printf("Unresolved status.\n");
             return -1;
     }
-}
-
-int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
-
 }

@@ -1,13 +1,15 @@
 #ifndef _QEUEU_H_
 #define _QUEUE_H_
+
 #include "tju_tcp.h"
 
 #define MAX_QUEUE 1024
 
+// struct tju_tcp_t;
 
 typedef struct sock_node {
     tju_tcp_t* data;
-    sock_node* next;
+    struct sock_node* next;
 } sock_node;
 
 typedef struct sock_queue {
@@ -15,7 +17,7 @@ typedef struct sock_queue {
     sock_node* base;
 } sock_queue;
 
-void queue_init(sock_queue* q);
+void queue_init(sock_queue** q);
 int is_empty(sock_queue* q);
 int size(sock_queue* q);
 int push(sock_queue* q, tju_tcp_t* sock);

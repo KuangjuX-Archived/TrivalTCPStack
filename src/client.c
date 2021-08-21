@@ -13,7 +13,8 @@ int main(int argc, char **argv) {
     target_addr.ip = inet_network("10.0.0.3");
     target_addr.port = 1234;
 
-    tju_connect(my_socket, target_addr);
+    // tju_connect(my_socket, target_addr);
+    tcp_connect(my_socket, target_addr);
 
     sleep(3);
 

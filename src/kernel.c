@@ -26,27 +26,30 @@ int onTCPPocket(char* pkt){
     int hashval;
     // 根据4个ip port 组成四元组 查找有没有已经建立连接的socket
     hashval = cal_hash(local_ip, local_port, remote_ip, remote_port);
-
+    
     // 首先查找已经建立连接的socket哈希表
     if (established_socks[hashval]!=NULL){
         tju_handle_packet(established_socks[hashval], pkt);
         return 0;
     }
 
-    tju_sock_addr* conn_addr;
-    conn_addr->ip = remote_ip;
-    conn_addr->port = remote_port;
 
+    tju_sock_addr conn_addr;
+    conn_addr.ip = remote_ip;
+    conn_addr.port = remote_port;
+
+    hashval = cal_hash(local_ip, local_port, 0, 0);
     // 没有的话再查找监听中的socket哈希表
-    hashval = cal_hash(local_ip, local_port, 0, 0); //监听的socket只有本地监听ip和端口 没有远端
-    if (listen_socks[hashval]!=NULL){
-        // tju_handle_packet(listen_socks[hashval], pkt);
-        // return 0;
-        if(is_server) {
-            tcp_rcv_state_server(listen_socks[hashval], pkt, conn_addr);
-        }else {
-            tcp_rcv_state_client(listen_socks[hashval], pkt, conn_addr);
-        }
+    if (listen_socks[hashval] != NULL && is_server) {
+        // 监听的socket只有本地监听ip和端口 没有远端
+        printf("server receive status packet.\n");
+        tcp_rcv_state_server(listen_socks[hashval], pkt, &conn_addr);
+    }
+
+    hashval = cal_hash(local_ip, local_port, remote_ip, remote_port);
+    if (connect_socks[hashval] != NULL && !is_server) {
+        printf("client receive status packet.\n");
+        tcp_rcv_state_client(connect_socks[hashval], pkt, &conn_addr);
     }
 
     // 都没找到 丢掉数据包
@@ -139,10 +142,11 @@ void startSimulation(){
     for(index=0;index<MAX_SOCK;index++){
         listen_socks[index] = NULL;
         established_socks[index] = NULL;
+        connect_socks[index] = NULL;
     }
     // 初始化半连接队列和全连接队列
-    queue_init(syns_socks);
-    queue_init(accept_socks);
+    queue_init(&syns_socks);
+    queue_init(&accept_socks);
 
     // 获取hostname 
     char hostname[8];

@@ -5,17 +5,19 @@
 #include "tju_packet.h"
 #include <unistd.h>
 #include "tju_tcp.h"
-#include "queue.h"
+
+struct sock_queue;
 
 #define MAX_SOCK 32
 tju_tcp_t* listen_socks[MAX_SOCK];
 tju_tcp_t* established_socks[MAX_SOCK];
+tju_tcp_t* connect_socks[MAX_SOCK];
 
 
 // 半连接队列
-sock_queue* syns_socks;
+struct sock_queue* syns_socks;
 // 全连接队列
-sock_queue* accept_socks;
+struct sock_queue* accept_socks;
 
 /*
 模拟Linux内核收到一份TCP报文的处理函数

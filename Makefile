@@ -12,6 +12,7 @@ OBJS = $(BUILD_DIR)/tju_packet.o \
 	   $(BUILD_DIR)/channel.o \
 	   $(BUILD_DIR)/timer.o \
 	   $(BUILD_DIR)/thpool.o \
+	   $(BUILD_DIR)/queue.o \
 	   $(BUILD_DIR)/utils.o 
 
 
