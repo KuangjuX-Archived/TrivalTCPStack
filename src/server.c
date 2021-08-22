@@ -44,10 +44,10 @@ int main(int argc, char **argv) {
         printf("Fail to accept.\n");
     }
 
-    // char buf[512];
-    // tju_recv(my_server, (void*)buf, 512);
-    // printf("%s\n", buf);
-    // tju_send(my_server, (void*)buf, 512);
+    char buf[512];
+    tju_recv(my_server, (void*)buf, 512);
+    printf("%s\n", buf);
+    tju_send(my_server, (void*)buf, 512);
 
     
 

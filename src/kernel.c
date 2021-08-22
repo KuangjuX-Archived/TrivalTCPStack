@@ -33,7 +33,6 @@ int onTCPPocket(char* pkt){
         return 0;
     }
 
-
     tju_sock_addr conn_addr;
     conn_addr.ip = remote_ip;
     conn_addr.port = remote_port;
@@ -112,11 +111,11 @@ void* receive_thread(void* arg){
         // MSG_PEEK 表示看一眼 不会把数据从缓冲区删除
         len = recvfrom(BACKEND_UDPSOCKET_ID, hdr, DEFAULT_HEADER_LEN, MSG_PEEK, (struct sockaddr *)&from_addr, &from_addr_size);
         // 一旦收到了大于header长度的数据 则接受整个TCP包
-        if(len >= DEFAULT_HEADER_LEN){
+        if(len >= DEFAULT_HEADER_LEN) {
             plen = get_plen(hdr); 
             pkt = (char*)malloc(plen);
             buf_size = 0;
-            while(buf_size < plen){ // 直到接收到 plen 长度的数据 接受的数据全部存在pkt中
+            while(buf_size < plen) { // 直到接收到 plen 长度的数据 接受的数据全部存在pkt中
                 n = recvfrom(BACKEND_UDPSOCKET_ID, pkt + buf_size, plen - buf_size, NO_FLAG, (struct sockaddr *)&from_addr, &from_addr_size);
                 buf_size = buf_size + n;
             }

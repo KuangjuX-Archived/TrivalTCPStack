@@ -71,7 +71,7 @@ int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
 
     printf("Find a socket in accept_socks.\n");
     tju_sock_addr local_addr, remote_addr;
-    tju_tcp_t* sock;
+    tju_tcp_t* sock = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
     // 从全连接队列中取出第一个连接socket
     int status = pop(accept_socks, sock);
     if(status < 0) {
@@ -294,10 +294,9 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 // 获取半连接队列的id
                 int index = sock->saved_syn;
                 // 获取半连接socket
-                tju_tcp_t* conn_sock;
+                tju_tcp_t* conn_sock = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
                 queue_remove(syns_socks, conn_sock, index);
-
-                // pop(syns_socks, conn_sock);
+                
                 // 将半连接socket放到全连接socket中
                 conn_sock->state = ESTABLISHED;
                 push(accept_socks, sock);
@@ -308,8 +307,7 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 printf("TrivialTCP should receive ESTABLISHED packet.\n");
                 return -1;
             }
-        default:
-            
+        default:         
             printf("Unresolved status: %d\n", flags);
             return -1;
     }
