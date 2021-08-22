@@ -3,6 +3,8 @@
 
 int handle_improved_window();
 
+void load_data_to_sending_window(tju_tcp_t *sock, const void *pVoid, int len);
+
 int accept_handshake(
     tju_tcp_t* sock, 
     tju_sock_addr local_addr,
@@ -109,11 +111,15 @@ tju_tcp_t* tju_socket(){
     sock->state = CLOSED;
     
     pthread_mutex_init(&(sock->send_lock), NULL);
-    sock->sending_buf = NULL;
+    sock->sending_buf = malloc(TCP_RECVWN_SIZE);
     sock->sending_len = 0;
+    // init sending item flag
+    for(int i=0;i<MAX_SENDING_ITEM_NUM;i++){
+        sock->sending_item_flag[i]=-1;
+    }
 
     pthread_mutex_init(&(sock->recv_lock), NULL);
-    sock->received_buf = NULL;
+    sock->received_buf = malloc(MAX_SENDING_ITEM_NUM);
     sock->received_len = 0;
     
     if(pthread_cond_init(&sock->wait_cond, NULL) != 0){
@@ -218,8 +224,8 @@ int tju_connect(tju_tcp_t* sock, tju_sock_addr target_addr){
 }
 
 int tju_send(tju_tcp_t* sock, const void *buffer, int len){
-    // 这里当然不能直接简单地调用sendToLayer3
 
+    load_data_to_sending_window(sock,buffer,len);
     int send_flag=handle_improved_window(sock,buffer,len);
 
     char* data = malloc(len);
@@ -299,6 +305,7 @@ int tju_close (tju_tcp_t* sock){
     return 0;
 }
 
+// 改进窗口算法。
 int handle_improved_window(tju_tcp_t* sock, const void *buffer, int len) {
     uint16_t useable_wnd; // 发送方计算的接收方可用的窗口大小
     useable_wnd=sock->window.wnd_send->rwnd-(sock->window.wnd_send->nextseq- sock->window.wnd_send->ack_cnt);
@@ -308,6 +315,21 @@ int handle_improved_window(tju_tcp_t* sock, const void *buffer, int len) {
         return_flag=0;
     }
     return return_flag;
+}
+
+void load_data_to_sending_window(tju_tcp_t *sock, const void *buffer, int len) {
+    while(pthread_mutex_lock(&(sock->send_lock)) != 0);
+    if(sock->sending_len+len>TCP_RECVWN_SIZE){
+        printf("error: too large data load to sending buffer.");
+        exit(-1);
+    }
+    memcpy(sock->sending_buf+sock->sending_len,buffer,len);
+    sock->sending_len+=len;
+    for(int i=0;i<MAX_SENDING_ITEM_NUM;i++){
+        if(sock->sending_item_flag[i]==-1){
+            sock->sending_item_flag[i]=
+        }
+    }
 }
 
 int handle_improved_ack(tju_tcp_t* sock){
