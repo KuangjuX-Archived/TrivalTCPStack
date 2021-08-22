@@ -25,6 +25,7 @@ int push(sock_queue* q, tju_tcp_t* sock) {
         node = (sock_node*)malloc(sizeof(sock_node));
         node->data = sock;
         node->next = NULL;
+
         q->base = node;
         q->size += 1;
         return 0;

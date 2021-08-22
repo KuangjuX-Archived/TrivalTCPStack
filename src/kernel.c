@@ -26,7 +26,6 @@ int onTCPPocket(char* pkt){
     int hashval;
     // 根据4个ip port 组成四元组 查找有没有已经建立连接的socket
     hashval = cal_hash(local_ip, local_port, remote_ip, remote_port);
-    
     // 首先查找已经建立连接的socket哈希表
     if (established_socks[hashval] != NULL){
         tju_handle_packet(established_socks[hashval], pkt);
@@ -36,6 +35,7 @@ int onTCPPocket(char* pkt){
     tju_sock_addr conn_addr;
     conn_addr.ip = remote_ip;
     conn_addr.port = remote_port;
+    
 
     hashval = cal_hash(local_ip, local_port, 0, 0);
     // 没有的话再查找监听中的socket哈希表

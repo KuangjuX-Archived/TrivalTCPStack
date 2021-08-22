@@ -69,11 +69,11 @@ int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
     printf("Blocking...\n");
     while(is_empty(accept_socks)){}
 
-    printf("Find a socket in accept_socks.\n");
     tju_sock_addr local_addr, remote_addr;
     tju_tcp_t* sock = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
     // 从全连接队列中取出第一个连接socket
     int status = pop(accept_socks, sock);
+
     if(status < 0) {
         return -1;
     }
@@ -89,7 +89,12 @@ int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
     conn_sock->state = ESTABLISHED;
 
     // 将客户端socket放入已建立连接的表中
-    int hashval = cal_hash(local_addr.ip, local_addr.port, remote_addr.ip, remote_addr.port);
+    int hashval = cal_hash(
+        local_addr.ip, 
+        local_addr.port, 
+        remote_addr.ip, 
+        remote_addr.port
+    );
     established_socks[hashval] = conn_sock;
     printf("Connection established.\n");
 
@@ -264,12 +269,11 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 sock->state = SYN_SENT;
 
                 // 加入到半连接哈希表中
-                int index = push(syns_socks, sock);
+                int index = push(syns_socks, conn_sock);
                 if (index < 0) {
                     printf("fail to push syns_socks.\n");
                     return -1;
                 }
-                printf("Push syns_socks.\n");
 
                 // 将syn_id存储进服务器socket中
                 sock->saved_syn = index;
@@ -278,7 +282,6 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 int len = build_state_pkt(pkt, &send_pkt, SYN_RECV);
                 // 发送packet到客户端
                 sendToLayer3(send_pkt, len);
-                printf("send SYN_RECV to layer3.\n");
                 return 0;
             } else {
                 // 当flags不是SYN_SENT，暂时忽略
@@ -287,7 +290,6 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
             }
         case SYN_SENT:
             if (flags == ESTABLISHED) {
-                printf("Receive client status: ESTABLISHED.\n");
                 // 第三次握手，服务端发送ACK报文， 服务端将自己的socket变为ESTABLISHED，
                 // 从syns_socks取出对应的socket并加入到accept_socks中
                 sock->state = ESTABLISHED;
@@ -296,11 +298,9 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 // 获取半连接socket
                 tju_tcp_t* conn_sock = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
                 queue_remove(syns_socks, conn_sock, index);
-                
                 // 将半连接socket放到全连接socket中
                 conn_sock->state = ESTABLISHED;
-                push(accept_socks, sock);
-                printf("Push socket into accept socks.\n");
+                push(accept_socks, conn_sock);
                 return 0;
             } else {
                 // 当flags不是ESTABLSHED时，暂时忽略
@@ -318,7 +318,6 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
     switch(flags) {
         case SYN_RECV:
             if(sock->state == SYN_SENT) {
-                printf("Receive server status SYN_SENT.\n");
                 // 随便编的seq
                 int seq = get_seq(pkt) + 464;
                 int ack = get_seq(pkt) + 1;
