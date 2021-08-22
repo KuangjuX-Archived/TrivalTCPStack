@@ -1,5 +1,5 @@
 #include "tju_tcp.h"
-
+#include "utils.h"
 
 int handle_improved_window();
 
@@ -319,17 +319,18 @@ int handle_improved_window(tju_tcp_t* sock, const void *buffer, int len) {
 
 void load_data_to_sending_window(tju_tcp_t *sock, const void *buffer, int len) {
     while(pthread_mutex_lock(&(sock->send_lock)) != 0);
+    // 判断是否有足够空间存储数据
     if(sock->sending_len+len>TCP_RECVWN_SIZE){
         printf("error: too large data load to sending buffer.");
         exit(-1);
     }
+    //将数据拷贝进入buffer
     memcpy(sock->sending_buf+sock->sending_len,buffer,len);
+    //更新sending_buffer的大小
     sock->sending_len+=len;
-    for(int i=0;i<MAX_SENDING_ITEM_NUM;i++){
-        if(sock->sending_item_flag[i]==-1){
-            sock->sending_item_flag[i]=
-        }
-    }
+    //存储这个data的大小
+    push(sock->sending_item_flag,MAX_SENDING_ITEM_NUM,len);
+    pthread_mutex_unlock(&(sock->recv_lock));
 }
 
 int handle_improved_ack(tju_tcp_t* sock){
