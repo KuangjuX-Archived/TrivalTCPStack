@@ -3,37 +3,52 @@
 模拟Linux内核收到一份TCP报文的处理函数
 */
 int onTCPPocket(char* pkt){
+    printf("Receive packet from layer3.\n");
     // 当我们收到TCP包时 包中 源IP 源端口 是发送方的 也就是我们眼里的 远程(remote) IP和端口
     uint16_t remote_port = get_src(pkt);
     uint16_t local_port = get_dst(pkt);
     // remote ip 和 local ip 是读IP 数据包得到的 仿真的话这里直接根据hostname判断
-
+    // 获取是server还是client
+    int is_server;
     char hostname[8];
     gethostname(hostname, 8);
     uint32_t remote_ip, local_ip;
     if(strcmp(hostname,"server")==0){ // 自己是服务端 远端就是客户端
         local_ip = inet_network("10.0.0.3");
         remote_ip = inet_network("10.0.0.2");
+        is_server = 1;
     }else if(strcmp(hostname,"client")==0){ // 自己是客户端 远端就是服务端 
         local_ip = inet_network("10.0.0.2");
         remote_ip = inet_network("10.0.0.3");
+        is_server = 0;
     }
 
     int hashval;
     // 根据4个ip port 组成四元组 查找有没有已经建立连接的socket
     hashval = cal_hash(local_ip, local_port, remote_ip, remote_port);
-
     // 首先查找已经建立连接的socket哈希表
-    if (established_socks[hashval]!=NULL){
+    if (established_socks[hashval] != NULL){
         tju_handle_packet(established_socks[hashval], pkt);
         return 0;
     }
 
+    tju_sock_addr conn_addr;
+    conn_addr.ip = remote_ip;
+    conn_addr.port = remote_port;
+    
+
+    hashval = cal_hash(local_ip, local_port, 0, 0);
     // 没有的话再查找监听中的socket哈希表
-    hashval = cal_hash(local_ip, local_port, 0, 0); //监听的socket只有本地监听ip和端口 没有远端
-    if (listen_socks[hashval]!=NULL){
-        tju_handle_packet(listen_socks[hashval], pkt);
-        return 0;
+    if (listen_socks[hashval] != NULL && is_server) {
+        // 监听的socket只有本地监听ip和端口 没有远端
+        printf("Server receive status packet.\n");
+        return tcp_rcv_state_server(listen_socks[hashval], pkt, &conn_addr);
+    }
+
+    hashval = cal_hash(local_ip, local_port, remote_ip, remote_port);
+    if (connect_socks[hashval] != NULL && !is_server) {
+        printf("Client receive status packet.\n");
+        return tcp_rcv_state_client(connect_socks[hashval], pkt, &conn_addr);
     }
 
     // 都没找到 丢掉数据包
@@ -96,11 +111,11 @@ void* receive_thread(void* arg){
         // MSG_PEEK 表示看一眼 不会把数据从缓冲区删除
         len = recvfrom(BACKEND_UDPSOCKET_ID, hdr, DEFAULT_HEADER_LEN, MSG_PEEK, (struct sockaddr *)&from_addr, &from_addr_size);
         // 一旦收到了大于header长度的数据 则接受整个TCP包
-        if(len >= DEFAULT_HEADER_LEN){
+        if(len >= DEFAULT_HEADER_LEN) {
             plen = get_plen(hdr); 
-            pkt = malloc(plen);
+            pkt = (char*)malloc(plen);
             buf_size = 0;
-            while(buf_size < plen){ // 直到接收到 plen 长度的数据 接受的数据全部存在pkt中
+            while(buf_size < plen) { // 直到接收到 plen 长度的数据 接受的数据全部存在pkt中
                 n = recvfrom(BACKEND_UDPSOCKET_ID, pkt + buf_size, plen - buf_size, NO_FLAG, (struct sockaddr *)&from_addr, &from_addr_size);
                 buf_size = buf_size + n;
             }
@@ -126,7 +141,11 @@ void startSimulation(){
     for(index=0;index<MAX_SOCK;index++){
         listen_socks[index] = NULL;
         established_socks[index] = NULL;
+        connect_socks[index] = NULL;
     }
+    // 初始化半连接队列和全连接队列
+    queue_init(&syns_socks);
+    queue_init(&accept_socks);
 
     // 获取hostname 
     char hostname[8];
@@ -157,11 +176,10 @@ void startSimulation(){
 
     pthread_t thread_id = 1001;
     int rst = pthread_create(&thread_id, NULL, receive_thread, (void*)(&BACKEND_UDPSOCKET_ID));
-    if (rst<0){
+    if (rst < 0){
         printf("ERROR open thread");
         exit(-1); 
     }
-    // printf("successfully created bankend thread\n");
     return;
 }
 

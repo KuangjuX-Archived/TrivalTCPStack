@@ -13,21 +13,9 @@ int main(int argc, char **argv) {
     target_addr.ip = inet_network("10.0.0.3");
     target_addr.port = 1234;
 
-    tju_connect(my_socket, target_addr);
-    // printf("my_socket state %d\n", my_socket->state);      
+    tcp_connect(my_socket, target_addr);
 
-    // uint32_t conn_ip;
-    // uint16_t conn_port;
-
-    // conn_ip = my_socket->established_local_addr.ip;
-    // conn_port = my_socket->established_local_addr.port;
-    // printf("my_socket established_local_addr ip %d port %d\n", conn_ip, conn_port);
-
-    // conn_ip = my_socket->established_remote_addr.ip;
-    // conn_port = my_socket->established_remote_addr.port;
-    // printf("my_socket established_remote_addr ip %d port %d\n", conn_ip, conn_port);
-
-    sleep(3);
+    // sleep(3);
 
     tju_send(my_socket, "hello world", 12);
     tju_send(my_socket, "hello tju", 10);

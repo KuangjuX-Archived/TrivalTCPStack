@@ -30,7 +30,8 @@ int tju_listen(tju_tcp_t* sock);
 这里返回的socket一定是已经完成3次握手建立了连接的socket
 因为只要该函数返回, 用户就可以马上使用该socket进行send和recv
 */
-tju_tcp_t* tju_accept(tju_tcp_t* sock);
+// tju_tcp_t* tju_accept(tju_tcp_t* sock);
+int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock);
 
 
 /*
@@ -40,7 +41,8 @@ tju_tcp_t* tju_accept(tju_tcp_t* sock);
 函数正常返回后, 该socket一定是已经完成了3次握手, 建立了连接
 因为只要该函数返回, 用户就可以马上使用该socket进行send和recv
 */
-int tju_connect(tju_tcp_t* sock, tju_sock_addr target_addr);
+// int tju_connect(tju_tcp_t* sock, tju_sock_addr target_addr);
+int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr);
 
 
 int tju_send (tju_tcp_t* sock, const void *buffer, int len);
@@ -54,5 +56,11 @@ int tju_close (tju_tcp_t* sock);
 
 
 int tju_handle_packet(tju_tcp_t* sock, char* pkt);
+
+// 服务端状态处理
+int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr);
+
+// 客户端状态处理
+int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock);
 #endif
 
