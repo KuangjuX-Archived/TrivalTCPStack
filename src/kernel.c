@@ -114,7 +114,7 @@ void* receive_thread(void* arg){
         // 一旦收到了大于header长度的数据 则接受整个TCP包
         if(len >= DEFAULT_HEADER_LEN){
             plen = get_plen(hdr); 
-            pkt = malloc(plen);
+            pkt = (char*)malloc(plen);
             buf_size = 0;
             while(buf_size < plen){ // 直到接收到 plen 长度的数据 接受的数据全部存在pkt中
                 n = recvfrom(BACKEND_UDPSOCKET_ID, pkt + buf_size, plen - buf_size, NO_FLAG, (struct sockaddr *)&from_addr, &from_addr_size);
@@ -124,7 +124,7 @@ void* receive_thread(void* arg){
             if (onTCPPocket(pkt) < 0) {
                 printf("receive_thread: fail to depatch packets(onTCPPocket).\n");
             }
-            // free(pkt);
+            free(pkt);
         }
     }
 }
@@ -177,11 +177,10 @@ void startSimulation(){
 
     pthread_t thread_id = 1001;
     int rst = pthread_create(&thread_id, NULL, receive_thread, (void*)(&BACKEND_UDPSOCKET_ID));
-    if (rst<0){
+    if (rst < 0){
         printf("ERROR open thread");
         exit(-1); 
     }
-    // printf("successfully created bankend thread\n");
     return;
 }
 

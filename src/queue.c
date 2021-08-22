@@ -25,6 +25,7 @@ int push(sock_queue* q, tju_tcp_t* sock) {
         node = (sock_node*)malloc(sizeof(sock_node));
         node->data = sock;
         node->next = NULL;
+        q->base = node;
         q->size += 1;
         return 0;
     }
@@ -55,6 +56,7 @@ int pop(sock_queue* q, tju_tcp_t* sock) {
     sock_node* node = q->base;
     q->base = node->next;
     *sock = *(node->data);
+    free(node);
     q->size -= 1;
     return 0;
 }
@@ -67,9 +69,10 @@ int queue_remove(sock_queue* q, tju_tcp_t* sock, int index) {
     sock_node* node = q->base;
 
      if(index == 0) {
-        *sock = *node->data;
-         free(node);
-         q->base = NULL;
+        *sock = *(node->data);
+        free(node);
+        q->base = NULL;
+        return 0;
     }
 
     for(int i = 1; i < index; i++) {

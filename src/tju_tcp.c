@@ -74,7 +74,6 @@ int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
     tju_tcp_t* sock;
     // 从全连接队列中取出第一个连接socket
     int status = pop(accept_socks, sock);
-
     if(status < 0) {
         return -1;
     }
@@ -297,6 +296,7 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 // 获取半连接socket
                 tju_tcp_t* conn_sock;
                 queue_remove(syns_socks, conn_sock, index);
+
                 // pop(syns_socks, conn_sock);
                 // 将半连接socket放到全连接socket中
                 conn_sock->state = ESTABLISHED;
