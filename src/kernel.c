@@ -3,7 +3,6 @@
 模拟Linux内核收到一份TCP报文的处理函数
 */
 int onTCPPocket(char* pkt){
-    printf("Receive packet from layer3.\n");
     // 当我们收到TCP包时 包中 源IP 源端口 是发送方的 也就是我们眼里的 远程(remote) IP和端口
     uint16_t remote_port = get_src(pkt);
     uint16_t local_port = get_dst(pkt);
@@ -24,11 +23,15 @@ int onTCPPocket(char* pkt){
     }
 
     int hashval;
+    hashval = cal_hash(local_ip, local_port, 0, 0);
+
+    // 首先查找已经建立连接的socket哈希表
     // 根据4个ip port 组成四元组 查找有没有已经建立连接的socket
     hashval = cal_hash(local_ip, local_port, remote_ip, remote_port);
-    // 首先查找已经建立连接的socket哈希表
-    if (established_socks[hashval] != NULL){
+    if (established_socks[hashval] != NULL) {
+        // 这里应当判断是否发送FIN packet, 或者socket的状态不是ESTABLIED
         tju_handle_packet(established_socks[hashval], pkt);
+        
         return 0;
     }
 

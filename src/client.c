@@ -27,5 +27,8 @@ int main(int argc, char **argv) {
     tju_recv(my_socket, (void*)buf, 10);
     printf("client recv %s\n", buf);
 
+    tcp_close(my_socket);
+    while(TRUE){}
+
     return EXIT_SUCCESS;
 }

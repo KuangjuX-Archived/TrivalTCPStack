@@ -50,6 +50,11 @@ int main(int argc, char **argv) {
     printf("%s\n", buf);
     tju_send(conn_sock, (void*)buf, 512);
 
+    tju_recv(conn_sock, (void*)buf, 512);
+    printf("%s\n", buf);
+    tju_send(conn_sock, (void*)buf, 512);
+
+    while(TRUE){}
     
 
     return EXIT_SUCCESS;

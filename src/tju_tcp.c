@@ -1,7 +1,6 @@
 #include "tju_tcp.h"
 #include "queue.h"
 
-
 /*
 创建 TCP socket 
 初始化对应的结构体
@@ -217,19 +216,6 @@ int tju_recv(tju_tcp_t* sock, void *buffer, int len){
 }
 
 int tju_handle_packet(tju_tcp_t* sock, char* pkt){
-    // 如果收到FIN标志位的话，则开启close状态
-    if(get_flags(pkt) == FIN) {
-        sock->state = FIN_WAIT_1;
-        // 向对方发送FIN，ACK标志位
-        char* send_pkt;
-        int len = build_state_pkt(pkt, &send_pkt, FIN | ACK);
-        if(len < 0) {
-            printf("Fail to build packet.\n");
-        }
-        sendToLayer3(send_pkt, len);
-        return 1;
-    }
-    
     uint32_t data_len = get_plen(pkt) - DEFAULT_HEADER_LEN;
     // 这里要判断去处理三次握手和连接关闭的情况，这是不走缓冲区的过程
 
@@ -372,11 +358,13 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
 
 // 事实上除了通过判断recv_pkt的flags时也需要检查ack，这里暂时没有实现
 int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
+    printf("close handler.\n");
     uint8_t flags = get_flags(recv_pkt);
     switch(local_sock->state) {
         case ESTABLISHED:
             // 服务端接受客户端发起的close请求
             if(flags == (FIN | ACK)) {
+                printf("FIN_WAIT_1.\n");
                 // 将本地socket状态修改为CLOS_WAIT
                 local_sock->state = CLOSE_WAIT;
                 // 向对方发送ACK
@@ -394,8 +382,10 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
             }else {
                 return -1;
             }
+
         case FIN_WAIT_1:
             if(flags == ACK) {
+                printf("FIN_WAIT_2.\n");
                 // 这里将状态修改为FIN_WAIT_2,等待对方继续发送分组
                 local_sock->state = FIN_WAIT_2;
                 return 0;
@@ -403,14 +393,10 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
                 return -1;
             }
 
-        // case CLOSE_WAIT:
-        //     // 向对方发送FIN packet
-        //     tcp_send_fin(local_sock);
-        //     // 修改自己的状态
-        //     local_sock->state = LAST_ACK;
 
         case FIN_WAIT_2:
             if(flags == (FIN | ACK)) {
+                printf("TIME_WAIT.\n");
                 local_sock->state = TIME_WAIT;
                 tcp_send_ack(local_sock);
                 return 0;
@@ -420,6 +406,7 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
         
         case TIME_WAIT:
             if(flags == (FIN | ACK)) {
+                printf("CLOSED.\n");
                 tcp_send_ack(local_sock);
                 // 这里应该等待两个2个MSL
 

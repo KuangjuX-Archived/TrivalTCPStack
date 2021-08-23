@@ -83,6 +83,8 @@ uint8_t get_flags(char* msg);
 uint16_t get_advertised_window(char* msg);
 uint8_t get_ext(char* msg);
 
+int is_fin(char* pkt);
+
 
 /*############################################## 下面是实现上面函数功能的辅助函数 用户没必要调用 ##############################################*/
 char* packet_to_buf(tju_packet_t* packet);
