@@ -52,7 +52,7 @@ int tju_recv (tju_tcp_t* sock, void *buffer, int len);
 关闭一个TCP连接
 这里涉及到四次挥手
 */
-int tju_close (tju_tcp_t* sock);
+int tcp_close (tju_tcp_t* sock);
 
 
 int tju_handle_packet(tju_tcp_t* sock, char* pkt);

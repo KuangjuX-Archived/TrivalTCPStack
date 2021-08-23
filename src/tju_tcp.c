@@ -250,8 +250,26 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
     return 1;
 }
 
-int tju_close (tju_tcp_t* sock){
-    return 0;
+// 关闭连接，向远程发送FIN pakcet，等待资源释放
+int tcp_close (tju_tcp_t* sock){
+    char* send_pkt;
+    int seq = 464;
+    int ack = 0;
+    send_pkt = create_packet_buf(
+        sock->bind_addr.port,
+        sock->established_remote_addr.port,
+        seq,
+        ack,
+        20,
+        20,
+        FIN | ACK,
+        0,
+        0,
+        NULL,
+        0
+    );
+    sendToLayer3(send_pkt, 20);
+    while(TRUE){}
 }
 
 int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
@@ -380,6 +398,10 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
                 return 0;
             }else {
 
+            }
+        case FIN_WAIT_1:
+            if(flags == ACK) {
+                local_sock->state = FIN_WAIT_2;
             }
         default: 
             printf("Unresolved status.\n");
