@@ -252,24 +252,17 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
 
 // 关闭连接，向远程发送FIN pakcet，等待资源释放
 int tcp_close (tju_tcp_t* sock){
-    char* send_pkt;
-    int seq = 464;
-    int ack = 0;
-    send_pkt = create_packet_buf(
-        sock->bind_addr.port,
-        sock->established_remote_addr.port,
-        seq,
-        ack,
-        20,
-        20,
-        FIN | ACK,
-        0,
-        0,
-        NULL,
-        0
-    );
-    sendToLayer3(send_pkt, 20);
-    while(TRUE){}
+    // 首先应该检查接收队列中的缓冲区是否仍有剩余
+    while(sock->received_buf != NULL) {
+        // 若仍有剩余则清空
+        free(sock->received_buf);
+        sock->received_len = 0;
+        sock->received_buf = NULL;
+    }
+    // 修改当前状态
+    sock->state = FIN_WAIT_1;
+    // 发送FIN分组
+    tcp_send_fin(sock);
 }
 
 int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
@@ -295,14 +288,12 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
 
                 // 修改服务端socket的状态
                 sock->state = SYN_SENT;
-
                 // 加入到半连接哈希表中
                 int index = push(syns_socks, conn_sock);
                 if (index < 0) {
                     printf("fail to push syns_socks.\n");
                     return -1;
                 }
-
                 // 将syn_id存储进服务器socket中
                 sock->saved_syn = index;
                 // 创建带有状态的packet
@@ -379,12 +370,13 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
     }
 }
 
+// 事实上除了通过判断recv_pkt的flags时也需要检查ack，这里暂时没有实现
 int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
     uint8_t flags = get_flags(recv_pkt);
     switch(local_sock->state) {
         case ESTABLISHED:
             // 服务端接受客户端发起的close请求
-            if(flags == FIN_WAIT_1) {
+            if(flags == (FIN | ACK)) {
                 // 将本地socket状态修改为CLOS_WAIT
                 local_sock->state = CLOSE_WAIT;
                 // 向对方发送ACK
@@ -395,16 +387,89 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
                     return -1;
                 }
                 sendToLayer3(send_pkt, len);
+
+                // 等待一段时间，继续向远程发送pakcet
+                tcp_send_fin(local_sock);
                 return 0;
             }else {
-
+                return -1;
             }
         case FIN_WAIT_1:
             if(flags == ACK) {
+                // 这里将状态修改为FIN_WAIT_2,等待对方继续发送分组
                 local_sock->state = FIN_WAIT_2;
+                return 0;
+            }else {
+                return -1;
+            }
+
+        // case CLOSE_WAIT:
+        //     // 向对方发送FIN packet
+        //     tcp_send_fin(local_sock);
+        //     // 修改自己的状态
+        //     local_sock->state = LAST_ACK;
+
+        case FIN_WAIT_2:
+            if(flags == (FIN | ACK)) {
+                local_sock->state = TIME_WAIT;
+                tcp_send_ack(local_sock);
+                return 0;
+            }else {
+                return -1;
+            }
+        
+        case LAST_ACK:
+            // 关闭
+            if(flags == ACK) {
+                local_sock->state = CLOSED;
+                return 0;
+            }else {
+                return -1;
             }
         default: 
             printf("Unresolved status.\n");
             return -1;
     }
+}
+
+void tcp_send_fin(tju_tcp_t* sock) {
+    char* send_pkt;
+    // 瞎编seq和ack
+    int seq = 464;
+    int ack = 0;
+    int flags = ACK | FIN;
+    send_pkt = create_packet_buf(
+        sock->bind_addr.port,
+        sock->established_remote_addr.port,
+        seq,
+        ack,
+        20,
+        20,
+        flags,
+        0,
+        0,
+        NULL,
+        0
+    );
+    sendToLayer3(send_pkt, 20);
+}
+
+void tcp_send_ack(tju_tcp_t* sock) {
+    // 瞎编seq和ack
+    uint32_t seq = 464;
+    uint32_t ack = 0;
+    char* send_pkt = create_packet_buf(
+        sock->bind_addr.port,
+        sock->established_remote_addr.port,
+        seq,
+        ack,
+        20,
+        20,
+        ACK,
+        0,
+        0,
+        NULL,
+        0
+    );
+    sendToLayer3(send_pkt, 20);
 }
