@@ -50,12 +50,17 @@ execute `make server` in server container and execute `make client` in client co
 We use `10.0.0.3` as server's ip address instead of `10.0.0.1` because this address is reported occupied.
 
 ## Other
-Once create the containers by the params `-itd`, they keep running in the background.  
-Get more information on the Docker website.
+- Once create the containers by the params `-itd`, they keep running in the background.  
+- Get more information on the Docker website.
 Destroy all running containers:     
 
 ```shell
 sudo docker container prune
+```
+
+- Use valgrind to check the status of memory leak:
+```shell
+valgrind --tool=memcheck (--leak-check=full) {exectuable file}
 ```
 
 ## References

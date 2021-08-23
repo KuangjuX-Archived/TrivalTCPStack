@@ -62,7 +62,6 @@ int accept(int sockfd, struct sockaddr *restrict addr,
 
 int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
     printf("Try to connect......\n");
-    conn_sock = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
     memcpy(conn_sock, listen_sock, sizeof(tju_tcp_t));
 
     // 如果全连接队列为空，则阻塞等待
@@ -190,7 +189,6 @@ int tju_recv(tju_tcp_t* sock, void *buffer, int len){
     while(sock->received_len <= 0){
         // 阻塞
     }
-
     while(pthread_mutex_lock(&(sock->recv_lock)) != 0); // 加锁
 
     int read_len = 0;
