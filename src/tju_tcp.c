@@ -418,10 +418,24 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
                 return -1;
             }
         
+        case TIME_WAIT:
+            if(flags == (FIN | ACK)) {
+                tcp_send_ack(local_sock);
+                // 这里应该等待两个2个MSL
+
+                // 释放socket资源
+                free(local_sock);
+                return 0;
+            }else {
+                return -1;
+            }
+        
         case LAST_ACK:
             // 关闭
             if(flags == ACK) {
                 local_sock->state = CLOSED;
+                // 释放socket资源
+                free(local_sock);
                 return 0;
             }else {
                 return -1;
