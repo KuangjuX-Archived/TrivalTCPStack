@@ -217,6 +217,18 @@ int tju_recv(tju_tcp_t* sock, void *buffer, int len){
 }
 
 int tju_handle_packet(tju_tcp_t* sock, char* pkt){
+    // 如果收到FIN标志位的话，则开启close状态
+    if(get_flags(pkt) == FIN) {
+        sock->state = FIN_WAIT_1;
+        // 向对方发送FIN，ACK标志位
+        char* send_pkt;
+        int len = build_state_pkt(pkt, &send_pkt, FIN | ACK);
+        if(len < 0) {
+            printf("Fail to build packet.\n");
+        }
+        sendToLayer3(send_pkt, len);
+        return 1;
+    }
     
     uint32_t data_len = get_plen(pkt) - DEFAULT_HEADER_LEN;
     // 这里要判断去处理三次握手和连接关闭的情况，这是不走缓冲区的过程
@@ -345,6 +357,32 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
             }
         default:
             printf("Unresolved status: %d\n", flags);
+            return -1;
+    }
+}
+
+int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
+    uint8_t flags = get_flags(recv_pkt);
+    switch(local_sock->state) {
+        case ESTABLISHED:
+            // 服务端接受客户端发起的close请求
+            if(flags == FIN_WAIT_1) {
+                // 将本地socket状态修改为CLOS_WAIT
+                local_sock->state = CLOSE_WAIT;
+                // 向对方发送ACK
+                char* send_pkt;
+                int len = build_state_pkt(recv_pkt, &send_pkt, ACK);
+                if(len < 0) {
+                    printf("Fail to build packet.\n");
+                    return -1;
+                }
+                sendToLayer3(send_pkt, len);
+                return 0;
+            }else {
+
+            }
+        default: 
+            printf("Unresolved status.\n");
             return -1;
     }
 }
