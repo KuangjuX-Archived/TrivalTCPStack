@@ -28,6 +28,9 @@
 #define TRUE 1
 #define FALSE 0
 
+// temporary Flag for push bit
+#define SET_PUSH_BIT 3
+
 // 定义最大包长 防止IP层分片
 #define MAX_DLEN 1375 	// 最大包内数据长度
 #define MAX_LEN 1400 	// 最大包长度

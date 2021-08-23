@@ -1,9 +1,11 @@
 #include "tju_tcp.h"
 #include "utils.h"
+#include<string.h>
 
 int handle_improved_window();
 
 void load_data_to_sending_window(tju_tcp_t *sock, const void *pVoid, int len);
+void calculate_sending_buffer_depend_on_rwnd(tju_tcp_t* sock);
 
 int accept_handshake(
     tju_tcp_t* sock, 
@@ -227,24 +229,10 @@ int tju_send(tju_tcp_t* sock, const void *buffer, int len){
 
     load_data_to_sending_window(sock,buffer,len);
     int send_flag=handle_improved_window(sock,buffer,len);
-
-    char* data = malloc(len);
-    memcpy(data, buffer, len);
-
-    char* msg;
-    uint32_t seq = 464;
-    uint16_t plen = DEFAULT_HEADER_LEN + len;
-
-    if(send_flag){
-        // 窗口控制算法抑制传输
-        return 0;
+    while(!send_flag){
+        send_flag=handle_improved_window(sock,buffer,len);
     }
-
-    msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 
-              DEFAULT_HEADER_LEN, plen, NO_FLAG, 1, 0, data, len);
-
-    sendToLayer3(msg, plen);
-    
+    calculate_sending_buffer_depend_on_rwnd(sock);
     return 0;
 }
 
@@ -333,6 +321,64 @@ void load_data_to_sending_window(tju_tcp_t *sock, const void *buffer, int len) {
     pthread_mutex_unlock(&(sock->recv_lock));
 }
 
-int handle_improved_ack(tju_tcp_t* sock){
-    return 0;
+//根据sending len自动切分tcp data发送buffer中内容到layer3,最后一个包的
+void sending_buffer_to_layer3(tju_tcp_t *sock,int len,int push_bit_flag){
+    //#TODO ! some params of create_packet_buf are WRONG for a complete implementation, FIX it for a later time.
+    // 完整包数
+    int full_pkt_nums=len/MAX_DLEN;
+    //多出来的
+    int left_data_len=len%MAX_DLEN;
+    for(int i=0;i<full_pkt_nums;i++){
+        char * send_data;
+        send_data=malloc(MAX_DLEN);
+        memcpy(send_data,sock->sending_buf+i*MAX_DLEN,MAX_DLEN);
+        char* msg;
+        // calculate the right seq ack
+        uint32_t seq = 0;
+        uint32_t ack=0;
+        uint16_t plen = DEFAULT_HEADER_LEN + MAX_DLEN;
+        if(i==full_pkt_nums-1&&left_data_len==0){
+            msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, ack,
+                                    DEFAULT_HEADER_LEN, plen, SET_PUSH_BIT, 2000, 0, send_data, MAX_DLEN);
+        }else{
+            msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, ack,
+                                    DEFAULT_HEADER_LEN, plen, NO_FLAG, 2000, 0, send_data, MAX_DLEN);
+        }
+        sendToLayer3(msg, plen);
+    }
+    if(left_data_len!=0){
+        char * send_data;
+        send_data = malloc(len);
+        memcpy(send_data,sock->sending_buf+full_pkt_nums*MAX_DLEN,left_data_len);
+        char* msg;
+        // calculate the right seq ack
+        uint32_t seq = 0;
+        uint32_t ack=0;
+        uint16_t plen = DEFAULT_HEADER_LEN + left_data_len;
+        msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, ack,
+                                DEFAULT_HEADER_LEN, plen, SET_PUSH_BIT, 2000, 0, send_data, left_data_len);
+        sendToLayer3(msg, plen);
+    }
+    while(pthread_mutex_lock(&(sock->send_lock)) != 0);
+    memcpy(sock->sending_buf,sock->sending_buf+len,sock->sending_len-len);
+    sock->sending_len-=len;
+    pthread_mutex_unlock(&(sock->recv_lock));
+}
+
+void calculate_sending_buffer_depend_on_rwnd(tju_tcp_t* sock){
+//    int if_nagle_flag=FALSE;
+    // #TODO Nagle alg
+    // 两种情况
+    if(sock->window.wnd_send->rwnd>=sock->sending_len){
+        sending_buffer_to_layer3(sock,sock->sending_len,TRUE);
+    }else{
+        // #TODO blow code could block the thread, rewrite later time.
+        while(sock->sending_len!=0){
+            sending_buffer_to_layer3(sock,sock->window.wnd_send->rwnd,TRUE);
+            while(pthread_mutex_lock(&(sock->send_lock)) != 0);
+            memcpy(sock->sending_buf,sock->sending_buf+sock->window.wnd_send->rwnd,sock->sending_len-sock->window.wnd_send->rwnd);
+            sock->sending_len-=sock->window.wnd_send->rwnd;
+            pthread_mutex_unlock(&(sock->recv_lock));
+        }
+    }
 }

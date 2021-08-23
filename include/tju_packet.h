@@ -29,6 +29,7 @@ typedef struct {
 	uint32_t ack_num; 			//4 bytes ack number
 	uint16_t hlen;				//2 bytes 包头长 这个项目里全是20
 	uint16_t plen;				//2 bytes 包总长 包括包头和包携带的数据 20+数据长度 注意总长度不能超过MAX_LEN(1400) 防止IP层分片
+	// for the below flags the first 6 bit stand for FIN SYN RST PSH ACK URG
 	uint8_t flags;				//1 byte  标志位 比如 SYN FIN ACK 等
 	uint16_t advertised_window; //2 bytes 接收方发送给发送方的建议窗口大小 用于流量控制
     uint8_t ext;				//1 byte  一些额外的数据 在这个项目里是为了将header的大小凑整到20bytes 没有实际意义
