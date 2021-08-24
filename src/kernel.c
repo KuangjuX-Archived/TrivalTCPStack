@@ -53,7 +53,6 @@ int onTCPPocket(char* pkt){
         return tcp_rcv_state_server(listen_socks[hashval], pkt, &conn_addr);
     }
 
-    hashval = cal_hash(local_ip, local_port, remote_ip, remote_port);
     if (connect_sock != NULL && !is_server) {
         printf("Client receive status packet.\n");
         return tcp_rcv_state_client(connect_sock, pkt, &conn_addr);
