@@ -53,7 +53,14 @@ int tcp_ack_update_rtt(tju_tcp_t* sock, float seq_rtt_us, float sack_rtt_us) {
 
 // 当计时器超时时的回调函数
 void tcp_write_timer_handler(tju_tcp_t* sock) {
+    if(time_after(sock)) {
+        return;
+    }
 
+    // 这里需要针对socket的状态进行不同的操作
+    switch(sock->state) {
+        default:
+    }
 }
 
 
