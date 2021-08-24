@@ -95,6 +95,27 @@ int onTCPPocket(char* pkt){
 - 两端同时关闭连接
 
 ## 定时器的设计
+当应用程序创建 socket 时，我们将会调用 `tcp_init_timer()` 为计时器进行初始化，其中 `timeout` 域先设置为1，注册`callback`, 随后当我们开始传输分组时，我们调用回调函数开始计时。  
+
+当我们受到 ACK 之后，我们需要调用  `tcp_ack_update_rtt()` 来更新 RTT， 其中 `tcp_ack_update_rtt()` 实现如下：
+```c
+int tcp_ack_update_rtt(tju_tcp_t* sock, float seq_rtt_us, float sack_rtt_us) {
+
+    /* Prefer RTT measured from ACK's timing to TS-ECR. This is because
+	 * broken middle-boxes or peers may corrupt TS-ECR fields. But
+	 * Karn's algorithm forbids taking RTT if some retransmitted data
+	 * is acked (RFC6298).
+	 */
+	if (seq_rtt_us < 0)
+		seq_rtt_us = sack_rtt_us;
+
+    tcp_set_estimator(sock, seq_rtt_us);
+    tcp_set_rto(sock);
+    return 0;
+}
+```
+我们需要分别对 `extimator_rtt` 和 `dev_rtt` 进行更新之后再去设置 `timeout`。
+
 定时器的结构设计如下所示：
 ```c
 typedef struct rtt_timer_t {
