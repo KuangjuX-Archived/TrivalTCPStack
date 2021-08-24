@@ -15,6 +15,7 @@
 #include <pthread.h>
 #include <sys/select.h>
 #include <arpa/inet.h>
+#include "timer.h"
 
 #define MSL 1
 
@@ -108,7 +109,7 @@ typedef struct {
 
 
 // TJU_TCP 结构体 保存TJU_TCP用到的各种数据
-typedef struct {
+typedef struct tju_tcp_t {
 	int state; // TCP的状态
 
 	tju_sock_addr bind_addr; // 存放bind和listen时该socket绑定的IP和端口
@@ -128,6 +129,9 @@ typedef struct {
 	window_t window; // 发送和接受窗口
 
 	int saved_syn;
+
+	// 计时器逻辑
+	rtt_timer_t rtt_timer;
 
 } tju_tcp_t;
 
