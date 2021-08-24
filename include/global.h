@@ -16,6 +16,8 @@
 #include <sys/select.h>
 #include <arpa/inet.h>
 
+#define MSL 1
+
 // 单位是byte
 #define SIZE32 4
 #define SIZE16 2
@@ -44,6 +46,14 @@
 #define CLOSING 8
 #define LAST_ACK 9
 #define TIME_WAIT 10
+
+// 标志位定义
+#define FIN (1<<0)
+#define SYN (1<<1)
+#define RST (1<<2)
+#define PSH (1<<3)
+#define ACK (1<<4)
+#define URG (1<<5)
 
 // TCP 拥塞控制状态
 #define SLOW_START 0

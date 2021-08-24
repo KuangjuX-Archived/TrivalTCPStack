@@ -44,6 +44,7 @@ execute `make server` in server container and execute `make client` in client co
 - [x] Environment
 - [x] Thread Pool
 - [x] Channel
+- [x] Connection Management
 - [ ] System API: bind, listen, accept, recv, send
 
 ## Differnes

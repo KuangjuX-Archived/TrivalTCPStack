@@ -32,3 +32,11 @@ void timer_update(rtt_timer_t* timer, float rtt) {
     */
     timer->timeout = timer->estimated_rtt + max(CLOCK_G, 4 * timer->dev_rtt);
 }
+
+void start_timer() {
+
+}
+
+void stop_timer() {
+    
+}
