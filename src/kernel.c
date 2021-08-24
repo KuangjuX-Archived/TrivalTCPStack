@@ -154,6 +154,7 @@ void startSimulation(){
     queue_init(&syns_socks);
     queue_init(&accept_socks);
 
+
     // 获取hostname 
     char hostname[8];
     gethostname(hostname, 8);

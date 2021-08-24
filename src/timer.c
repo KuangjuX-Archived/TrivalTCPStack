@@ -1,6 +1,11 @@
 #include "timer.h"
 #include "global.h"
 
+// 检查是否超时
+int time_after(tju_tcp_t* sock) {
+
+}
+
 void tcp_init_timer(
     tju_tcp_t* sock, 
     void (*retransmit_handler)(unsigned long)
@@ -44,4 +49,23 @@ int tcp_ack_update_rtt(tju_tcp_t* sock, float seq_rtt_us, float sack_rtt_us) {
     tcp_set_estimator(sock, seq_rtt_us);
     tcp_set_rto(sock);
     return 0;
+}
+
+// 当计时器超时时的回调函数
+void tcp_write_timer_handler(tju_tcp_t* sock) {
+
+}
+
+
+// 超时重传函数处理
+// 检查当前socket状态
+// 检查是否超出了重传次数
+// 进入LOSS状态，开始慢启动
+void tcp_retransmit_timer(tju_tcp_t* sock) {
+
+}
+
+// 慢启动
+void tcp_entry_loss(tju_tcp_t* sock) {
+
 }
