@@ -53,7 +53,6 @@ int onTCPPocket(char* pkt){
         return tcp_rcv_state_server(listen_socks[hashval], pkt, &conn_addr);
     }
 
-    hashval = cal_hash(local_ip, local_port, remote_ip, remote_port);
     if (connect_sock != NULL && !is_server) {
         printf("Client receive status packet.\n");
         return tcp_rcv_state_client(connect_sock, pkt, &conn_addr);
@@ -154,6 +153,7 @@ void startSimulation(){
     // 初始化半连接队列和全连接队列
     queue_init(&syns_socks);
     queue_init(&accept_socks);
+
 
     // 获取hostname 
     char hostname[8];

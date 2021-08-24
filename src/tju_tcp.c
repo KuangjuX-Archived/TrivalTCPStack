@@ -26,6 +26,9 @@ tju_tcp_t* tju_socket(){
     sock->window.wnd_recv = NULL;
     sock->window.wnd_recv = NULL;
 
+    // 初始化定时器及回调函数
+    tcp_init_timer(sock, tcp_write_timer_handler);
+
     return sock;
 }
 

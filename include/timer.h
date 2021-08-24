@@ -10,16 +10,22 @@
 // clock granularities
 #define CLOCK_G (0.1)
 
+#define TCP_RTO_MAX 100
+
 typedef struct rtt_timer_t {
     float estimated_rtt;
     float dev_rtt;
     float timeout;
+    void (*callback)(tju_tcp_t* sock);
 } rtt_timer_t;
 
-// extern struct time_t* timers;
+void tcp_init_timer(tju_tcp_t* sock, void (*retransmit_handler)(unsigned long));
+void tcp_init_rtt(struct tju_tcp_t* sock);
+void tcp_set_estimator(tju_tcp_t* sock, float mrtt_us);
+void tcp_bound_rto(tju_tcp_t* sock);
+void tcp_set_rto(tju_tcp_t* sock);
+int tcp_ack_update_rtt(tju_tcp_t* sock, float seq_rtt_us, float sack_rtt_us);
 
-void timers_init(rtt_timer_t* timers);
-void timer_init(rtt_timer_t* timer);
-void timer_update(rtt_timer_t* timer, float rtt);
+void tcp_write_timer_handler(tju_tcp_t* sock);
 
 #endif
