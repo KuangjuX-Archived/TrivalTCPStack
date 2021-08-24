@@ -18,17 +18,16 @@ int main(int argc, char **argv) {
     // sleep(3);
 
     tju_send(my_socket, "hello world", 12);
-    tju_send(my_socket, "hello tju", 10);
 
     char buf[2021];
     tju_recv(my_socket, (void*)buf, 12);
     printf("client recv %s\n", buf);
 
+    tju_send(my_socket, "hello tju", 10);
     tju_recv(my_socket, (void*)buf, 10);
     printf("client recv %s\n", buf);
 
     tcp_close(my_socket);
-    while(TRUE){}
 
     return EXIT_SUCCESS;
 }

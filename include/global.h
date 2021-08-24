@@ -16,6 +16,8 @@
 #include <sys/select.h>
 #include <arpa/inet.h>
 
+#define MSL 1
+
 // 单位是byte
 #define SIZE32 4
 #define SIZE16 2
