@@ -132,3 +132,73 @@ typedef struct rtt_timer_t {
 其中包含定时器计算 RTT 的基础数据域以及回调函数 `callback()`，其中，我们需要将回调函数注册为 ` tcp_write_timer_handler()`，`tcp_write_timer_handler()` 的处理流程为开始计时即调用函数，倘若在规定时间内未收到 ACK，则根据 socket 当前的状态进行处理，例如超时则需要重传，倘若超出了重传次数，则需要启用慢启动重新开始。下图为该过程的一个图示： 
 
 ![](image/timer.png)
+
+关于定时器如何监测是否超时，首先，我们调用 `time_after()` 来判断是否超时，在该函数中我们新建一个线程开始计时，并通过通道监测信号量：
+  
+
+```c
+// 检查是否超时
+int time_after(tju_tcp_t* sock) {
+    // 这里我们通过通道进行异步监测时钟，倘若计时器到时而没有收到ACK
+    // 则通过channel发送对应的信号量， 倘若收到对应的ACK则返回对应的信号量
+    // 通道的使用同golang channel.
+    sock->rtt_timer->chan = chan_init(0);
+    int signal;
+    pthread_t* thread;
+    pthread_create(&thread, NULL, __check__timeout, (void*)sock);
+
+    switch (chan_select(&sock->rtt_timer->chan, NULL, &signal, NULL, 0, NULL)) {
+        case 0:
+            if(signal == TIMEOUT_SIGNAL) {
+                // timeout
+                return 1;
+            }else if(signal == ACK_SIGNAL) {
+                // ack
+                return 0;
+            }
+        default:
+            printf("no received message.\n");
+    }
+
+    chan_dispose(sock->rtt_timer->chan);
+}
+```
+在异步函数中我们不断阻塞直到超时或者收到ACK：
+```c
+void* __check__timeout(tju_tcp_t* sock) {
+    float timeout = sock->rtt_timer->timeout;
+    time_t cur_time = time(NULL);
+    time_t out_time = cur_time + timeout;
+    while(time(NULL) < out_time) {
+        // 检查信号量
+        if(TRUE) {
+            float mtime = time(NULL) - cur_time;
+            tcp_stop_timer(sock, mtime);
+            chan_send(sock->rtt_timer->chan, (void*)ACK_SIGNAL);
+        }
+    }
+    chan_send(sock->rtt_timer->chan, (void*)TIMEOUT_SIGNAL);
+}
+```
+当受到 ACK 时，我们重置计时器，否则返回超时的信号量。根据不同的 socket 状态进行处理：
+```c
+// 当计时器超时时的回调函数
+void tcp_write_timer_handler(tju_tcp_t* sock) {
+    if(!time_after(sock)) {
+        // 收到ack
+        return;
+    }
+
+    // 这里需要针对socket的状态进行不同的操作
+    switch(sock->state) {
+        case SYN_RECV:
+            printf("transmit RST.\n");
+        ...
+        ...
+        case ESTABLISHED: 
+            tcp_retransmit_timer(sock);
+        default:
+            printf("Unresolved status.\n");
+    }
+}
+```
