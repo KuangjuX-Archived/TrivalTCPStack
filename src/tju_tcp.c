@@ -6,7 +6,7 @@ int handle_improved_window();
 
 void load_data_to_sending_window(tju_tcp_t *sock, const void *pVoid, int len);
 void calculate_sending_buffer_depend_on_rwnd(tju_tcp_t* sock);
-
+void handle_delay_ack(tju_tcp_t* sock, char* pkt);
 int accept_handshake(
     tju_tcp_t* sock, 
     tju_sock_addr local_addr,
@@ -268,29 +268,24 @@ int tju_recv(tju_tcp_t* sock, void *buffer, int len){
     return 0;
 }
 
-int tju_handle_packet(tju_tcp_t* sock, char* pkt){
-    
-    uint32_t data_len = get_plen(pkt) - DEFAULT_HEADER_LEN;
 
+int tju_handle_packet(tju_tcp_t* sock, char* pkt){
+    uint32_t data_len = get_plen(pkt) - DEFAULT_HEADER_LEN;
     // 把收到的数据放到接受缓冲区
     while(pthread_mutex_lock(&(sock->recv_lock)) != 0); // 加锁
-
-    if(sock->received_buf == NULL){
-        sock->received_buf = malloc(data_len);
-    }else {
-        sock->received_buf = realloc(sock->received_buf, sock->received_len + data_len);
-    }
     memcpy(sock->received_buf + sock->received_len, pkt + DEFAULT_HEADER_LEN, data_len);
     sock->received_len += data_len;
 
     pthread_mutex_unlock(&(sock->recv_lock)); // 解锁
-
-
     return 0;
 }
 
 int tju_close (tju_tcp_t* sock){
     return 0;
+}
+
+void handle_delay_ack(tju_tcp_t* sock, char* pkt){
+
 }
 
 // 改进窗口算法。
