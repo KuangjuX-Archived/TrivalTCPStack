@@ -1,8 +1,29 @@
 #include "timer.h"
+#include "chan.h"
+
+chan_t* chan;
+
+void __check__timeout(tju_tcp_t* sock) {
+
+}
 
 // 检查是否超时
 int time_after(tju_tcp_t* sock) {
-    
+    // 这里我们通过通道进行异步监测时钟，倘若计时器到时而没有受到ACK
+    // 则通过channel发送对应的信号量， 倘若收到对应的ACK则返回对应的信号量
+    // 通道的使用同golang channel.
+    chan = chan_init(0);
+    int signal;
+    switch (chan_select(&chan, NULL, &signal, NULL, 0, NULL)) {
+        case 0:
+            if(signal == 1) {
+                // timeout
+            }else if(signal == 0) {
+                // ack
+            }
+        default:
+            printf("no received message.\n");
+    }
 }
 
 void tcp_init_timer(
