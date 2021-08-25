@@ -9,11 +9,12 @@ FLAGS = -pthread -g -ggdb -DDEBUG -I$(INC_DIR) -std=c11
 OBJS = $(BUILD_DIR)/tju_packet.o \
 	   $(BUILD_DIR)/kernel.o \
 	   $(BUILD_DIR)/tju_tcp.o \
-	   $(BUILD_DIR)/channel.o \
 	   $(BUILD_DIR)/timer.o \
 	   $(BUILD_DIR)/thpool.o \
+	   $(BUILD_DIR)/sockqueue.o \
+	   $(BUILD_DIR)/utils.o \
 	   $(BUILD_DIR)/queue.o \
-	   $(BUILD_DIR)/utils.o 
+	   $(BUILD_DIR)/chan.o 
 
 
 
@@ -24,6 +25,9 @@ all: clean server client
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c 
 	@$(CC) $(FLAGS) -c -o $@ $<
+
+lib:
+	@$(CC) $(FLAGS) -c 
 
 clean:
 	@-rm -f ./build/*.o $(BUILD_DIR)/client $(BUILD_DIR)/server

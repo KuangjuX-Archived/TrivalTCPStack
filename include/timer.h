@@ -3,6 +3,8 @@
 
 #include "kernel.h"
 #include "utils.h"
+#include "global.h"
+#include "chan.h"
 
 #define ALPHA (1/8)
 #define BETA (1/4)
@@ -17,10 +19,12 @@ typedef struct rtt_timer_t {
     float dev_rtt;
     float timeout;
     void (*callback)(tju_tcp_t* sock);
+    chan_t* chan;
+    
 } rtt_timer_t;
 
 void tcp_init_timer(tju_tcp_t* sock, void (*retransmit_handler)(unsigned long));
-void tcp_init_rtt(struct tju_tcp_t* sock);
+void tcp_init_rtt(tju_tcp_t* sock);
 void tcp_set_estimator(tju_tcp_t* sock, float mrtt_us);
 void tcp_bound_rto(tju_tcp_t* sock);
 void tcp_set_rto(tju_tcp_t* sock);
