@@ -1,99 +1,110 @@
+#define _GNU_SOURCE
+
+#ifdef __APPLE__
+#define _XOPEN_SOURCE
+#endif
+
+#include <errno.h>
+#include <limits.h>
+#include <pthread.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "queue.h"
 
-void queue_init(sock_queue** q) {
-    printf("init queue......\n");
-    *q = (sock_queue*)malloc(sizeof(sock_queue));
-    (*q)->size = 0;
-    (*q)->base = NULL;
+#if defined(_WIN32) && !defined(ENOBUFS)
+#include <winsock.h>
+#define ENOBUFS WSAENOBUFS
+#endif
+
+// Returns 0 if the queue is not at capacity. Returns 1 otherwise.
+static inline int queue_at_capacity(queue_t* queue)
+{
+    return queue->size >= queue->capacity;
 }
 
-int size(sock_queue* q) {
-    return q->size;
+// Allocates and returns a new queue. The capacity specifies the maximum
+// number of items that can be in the queue at one time. A capacity greater
+// than INT_MAX / sizeof(void*) is considered an error. Returns NULL if
+// initialization failed.
+queue_t* queue_init(size_t capacity)
+{
+    if (capacity > INT_MAX / sizeof(void*))
+    {
+        errno = EINVAL;
+        return NULL;
+    }
+
+    queue_t* queue = (queue_t*) malloc(sizeof(queue_t));
+    void**   data  = (void**) malloc(capacity * sizeof(void*));
+    if (!queue || !data)
+    {
+        // In case of free(NULL), no operation is performed.
+        free(queue);
+        free(data);   
+        errno = ENOMEM;
+        return NULL;
+    }
+
+    queue->size = 0;
+    queue->next = 0;
+    queue->capacity = capacity;
+    queue->data = data;
+    return queue;
 }
 
-int is_empty(sock_queue* q) {
-    return q->size == 0;
+// Releases the queue resources.
+void queue_dispose(queue_t* queue)
+{
+    free(queue->data);
+    free(queue);
 }
 
-int push(sock_queue* q, tju_tcp_t* sock) {
-    if (q->size == MAX_QUEUE) {
+// Enqueues an item in the queue. Returns 0 is the add succeeded or -1 if it
+// failed. If -1 is returned, errno will be set.
+int queue_add(queue_t* queue, void* value)
+{
+    if (queue_at_capacity(queue))
+    {
+        errno = ENOBUFS;
         return -1;
     }
 
-    sock_node* node = q->base;
-    if(node == NULL) {
-        node = (sock_node*)malloc(sizeof(sock_node));
-        node->data = sock;
-        node->next = NULL;
-
-        q->base = node;
-        q->size += 1;
-        return 0;
+    int pos = queue->next + queue->size;
+    if (pos >= queue->capacity)
+    {
+       pos -= queue->capacity;
     }
 
-    // 找到最后一个节点
-    while(node->next != NULL) {
-        node = node->next;
-    }
-    // 分配一个新的节点
-    sock_node* new_node = (sock_node*)malloc(sizeof(sock_node));
-    new_node->data = sock;
-    new_node->next = NULL;
-    node->next = new_node;
+    queue->data[pos] = value;
 
-    q->size += 1;
-    printf("the size of queue is %d.\n", q->size);
-
-    // 返回当前节点的id
-    return q->size - 1;
-}
-
-int pop(sock_queue* q, tju_tcp_t* sock) {
-    if(is_empty(q)) {
-        // 队列为空，返回-1
-        return -1;
-    }
-    // 返回并pop顶部节点
-    sock_node* node = q->base;
-    q->base = node->next;
-    *sock = *(node->data);
-    free(node);
-    q->size -= 1;
+    queue->size++;
     return 0;
 }
 
+// Dequeues an item from the head of the queue. Returns NULL if the queue is
+// empty.
+void* queue_remove(queue_t* queue)
+{
+    void* value = NULL;
 
-int queue_remove(sock_queue* q, tju_tcp_t* sock, int index) {
-    if(is_empty(q)) {
-        return -1;
-    }
-    sock_node* node = q->base;
-
-     if(index == 0) {
-        *sock = *(node->data);
-        free(node);
-        q->base = NULL;
-        return 0;
-    }
-
-    for(int i = 1; i < index; i++) {
-        node = node->next;
-        if(node == NULL) {
-            return -1;
+    if (queue->size > 0)
+    {
+        value = queue->data[queue->next];
+        queue->next++;
+        queue->size--;
+        if (queue->next >= queue->capacity)
+        {
+            queue->next -= queue->capacity;
         }
     }
-    // 找到目标节点的前一个节点
-    sock_node* prev = node;
-    node = node->next;
-    if(node == NULL) {
-        return -1;
-    }
-    // 去除节点，更新链表
-    prev->next = node->next;
-    *sock = *(node->data);
-    free(node);
-    q->size -= 1;
 
-    return 0;
+    return value;
 }
 
+// Returns, but does not remove, the head of the queue. Returns NULL if the
+// queue is empty.
+void* queue_peek(queue_t* queue)
+{
+    return queue->size ? queue->data[queue->next] : NULL;
+}

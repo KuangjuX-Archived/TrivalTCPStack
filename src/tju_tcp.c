@@ -1,5 +1,6 @@
 #include "tju_tcp.h"
-#include "queue.h"
+#include "sockqueue.h"
+#include "timer.h"
 
 /*
 创建 TCP socket 
@@ -68,12 +69,12 @@ int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
 
     // 如果全连接队列为空，则阻塞等待
     printf("Blocking...\n");
-    while(is_empty(accept_socks)){}
+    while(sockqueue_is_empty(accept_socks)){}
 
     tju_sock_addr local_addr, remote_addr;
     tju_tcp_t* sock = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
     // 从全连接队列中取出第一个连接socket
-    int status = pop(accept_socks, sock);
+    int status = sockqueue_pop(accept_socks, sock);
 
     if(status < 0) {
         return -1;
@@ -271,7 +272,7 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 // 修改服务端socket的状态
                 sock->state = SYN_SENT;
                 // 加入到半连接哈希表中
-                int index = push(syns_socks, conn_sock);
+                int index = sockqueue_push(syns_socks, conn_sock);
                 if (index < 0) {
                     printf("fail to push syns_socks.\n");
                     return -1;
@@ -298,10 +299,10 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 int index = sock->saved_syn;
                 // 获取半连接socket
                 tju_tcp_t* conn_sock = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
-                queue_remove(syns_socks, conn_sock, index);
+                sockqueue_remove(syns_socks, conn_sock, index);
                 // 将半连接socket放到全连接socket中
                 conn_sock->state = ESTABLISHED;
-                push(accept_socks, conn_sock);
+                sockqueue_push(accept_socks, conn_sock);
                 return 0;
             } else {
                 // 当flags不是ESTABLSHED时，暂时忽略

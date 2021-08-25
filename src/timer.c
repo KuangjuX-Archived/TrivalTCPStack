@@ -1,9 +1,8 @@
 #include "timer.h"
-#include "global.h"
 
 // 检查是否超时
 int time_after(tju_tcp_t* sock) {
-
+    
 }
 
 void tcp_init_timer(
@@ -11,28 +10,29 @@ void tcp_init_timer(
     void (*retransmit_handler)(unsigned long)
 ) {
     tcp_init_rtt(sock);
-    sock->rtt_timer.callback = retransmit_handler;
+    sock->rtt_timer->callback = retransmit_handler;
 }
 
 void tcp_init_rtt(struct tju_tcp_t* sock) {
-    sock->rtt_timer.estimated_rtt = 1;
-    sock->rtt_timer.dev_rtt = 1;
-    sock->rtt_timer.timeout = 1;
+    sock->rtt_timer = (rtt_timer_t*)malloc(sizeof(rtt_timer_t));
+    sock->rtt_timer->estimated_rtt = 1;
+    sock->rtt_timer->dev_rtt = 1;
+    sock->rtt_timer->timeout = 1;
 }
 
 void tcp_set_estimator(tju_tcp_t* sock, float mrtt_us) {
-    sock->rtt_timer.estimated_rtt = (1 - ALPHA) *  sock->rtt_timer.estimated_rtt + ALPHA * mrtt_us;
-    sock->rtt_timer.dev_rtt = (1 - BETA) * sock->rtt_timer.dev_rtt + BETA * abs(sock->rtt_timer.estimated_rtt - mrtt_us);
+    sock->rtt_timer->estimated_rtt = (1 - ALPHA) *  sock->rtt_timer->estimated_rtt + ALPHA * mrtt_us;
+    sock->rtt_timer->dev_rtt = (1 - BETA) * sock->rtt_timer->dev_rtt + BETA * abs(sock->rtt_timer->estimated_rtt - mrtt_us);
 }
 
 void tcp_bound_rto(tju_tcp_t* sock) {
-    if(sock->rtt_timer.timeout > TCP_RTO_MAX) {
-        sock->rtt_timer.timeout = TCP_RTO_MAX;
+    if(sock->rtt_timer->timeout > TCP_RTO_MAX) {
+        sock->rtt_timer->timeout = TCP_RTO_MAX;
     }
 }
 
 void tcp_set_rto(tju_tcp_t* sock) {
-    sock->rtt_timer.timeout = sock->rtt_timer.estimated_rtt = max(CLOCK_G, 4 * sock->rtt_timer.dev_rtt);
+    sock->rtt_timer->timeout = sock->rtt_timer->estimated_rtt = max(CLOCK_G, 4 * sock->rtt_timer->dev_rtt);
     tcp_bound_rto(sock);
 }
 
@@ -60,6 +60,7 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
     // 这里需要针对socket的状态进行不同的操作
     switch(sock->state) {
         default:
+            printf("Error.\n");
     }
 }
 
