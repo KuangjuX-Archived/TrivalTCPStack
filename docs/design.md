@@ -86,6 +86,10 @@ int onTCPPocket(char* pkt){
 }
 ```
 其中， `tcp_rcv_state_server()` 和 `tcp_rcv_state_client()` 方法来分别处理服务端与客户端握手时的状态机转换过程。
+   
+   
+![](image/handshake.png)
+
 ### 断开连接（四次挥手）
 断开连接与连接过程类似，同样由一端发起断开连接请求（即发送 `FIN` 标志位的报文），双方经过协商与状态机转换后最终同时关闭连接并释放资源。  
 
