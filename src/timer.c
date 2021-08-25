@@ -3,7 +3,7 @@
 
 chan_t* chan;
 
-void __check__timeout(tju_tcp_t* sock) {
+void* __check__timeout(tju_tcp_t* sock) {
 
 }
 
@@ -14,6 +14,9 @@ int time_after(tju_tcp_t* sock) {
     // 通道的使用同golang channel.
     chan = chan_init(0);
     int signal;
+    pthread_t* thread;
+    pthread_create(&thread, NULL, __check__timeout, (void*)sock);
+
     switch (chan_select(&chan, NULL, &signal, NULL, 0, NULL)) {
         case 0:
             if(signal == 1) {
@@ -24,6 +27,8 @@ int time_after(tju_tcp_t* sock) {
         default:
             printf("no received message.\n");
     }
+
+    chan_dispose(chan);
 }
 
 void tcp_init_timer(
