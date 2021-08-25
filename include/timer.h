@@ -12,7 +12,10 @@
 // clock granularities
 #define CLOCK_G (0.1)
 
-#define TCP_RTO_MAX 100
+#define TCP_RTO_MAX (100)
+
+#define ACK_SIGNAL (0)
+#define TIMEOUT_SIGNAL (1)
 
 typedef struct rtt_timer_t {
     float estimated_rtt;

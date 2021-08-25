@@ -1,8 +1,20 @@
 #include "timer.h"
 
 
-void* __check__timeout(tju_tcp_t* sock) {
 
+void* __check__timeout(tju_tcp_t* sock) {
+    float timeout = sock->rtt_timer->timeout;
+    time_t cur_time = time(NULL);
+    time_t out_time = cur_time + timeout;
+    while(time(NULL) < out_time) {
+        // 检查信号量
+        if(TRUE) {
+            float mtime = time(NULL) - cur_time;
+            tcp_stop_timer(sock, mtime);
+            chan_send(sock->rtt_timer->chan, (void*)ACK_SIGNAL);
+        }
+    }
+    chan_send(sock->rtt_timer->chan, (void*)TIMEOUT_SIGNAL);
 }
 
 // 检查是否超时
@@ -17,10 +29,10 @@ int time_after(tju_tcp_t* sock) {
 
     switch (chan_select(&sock->rtt_timer->chan, NULL, &signal, NULL, 0, NULL)) {
         case 0:
-            if(signal == 1) {
+            if(signal == TIMEOUT_SIGNAL) {
                 // timeout
                 return 1;
-            }else if(signal == 0) {
+            }else if(signal == ACK_SIGNAL) {
                 // ack
                 return 0;
             }
@@ -86,9 +98,24 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
 
     // 这里需要针对socket的状态进行不同的操作
     switch(sock->state) {
+        case SYN_RECV:
+            printf("transmit RST.\n");
+        case ESTABLISHED: 
+            tcp_retransmit_timer(sock);
         default:
-            printf("Error.\n");
+            printf("Unresolved status.\n");
     }
+}
+
+// 开始计时，即调用回调函数
+void tcp_start_timer(tju_tcp_t* sock) {
+    sock->rtt_timer->callback(sock);
+}
+
+// 停止计时并返回ack所花费时间
+void tcp_stop_timer(tju_tcp_t* sock, float mtime) {
+    // 重置计时器
+    tcp_ack_update_rtt(sock, mtime, 1);
 }
 
 
