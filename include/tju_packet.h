@@ -43,7 +43,13 @@ typedef struct {
 } tju_packet_t;
 
 
+// 设置checksum
 void set_checksum(tju_packet_t* pkt);
+
+int tcp_check(tju_packet_t* pkt);
+
+// 计算checksum
+static unsigned short tcp_compute_checksum(tju_packet_t* pkt);
 
 /*
  输入header所有字段 和 TCP包数据内容及其长度
@@ -91,6 +97,7 @@ int is_fin(char* pkt);
 
 /*############################################## 下面是实现上面函数功能的辅助函数 用户没必要调用 ##############################################*/
 char* packet_to_buf(tju_packet_t* packet);
+tju_packet_t* buf_to_packet(char* buf);
 char* header_in_char(uint16_t src, uint16_t dst, uint32_t seq, uint32_t ack,
     uint16_t hlen, uint16_t plen, uint8_t flags, uint16_t adv_window, 
     uint8_t ext);

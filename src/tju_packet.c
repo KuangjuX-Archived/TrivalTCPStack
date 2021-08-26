@@ -8,7 +8,7 @@
  */
 tju_packet_t* create_packet(uint16_t src, uint16_t dst, uint32_t seq, 
     uint32_t ack, uint16_t hlen, uint16_t plen, uint8_t flags, 
-    uint16_t adv_window, uint8_t ext, char* data, int len){
+    uint16_t adv_window, uint8_t ext, char* data, int len) {
 
     tju_packet_t* new = malloc(sizeof(tju_packet_t));
 
@@ -21,7 +21,9 @@ tju_packet_t* create_packet(uint16_t src, uint16_t dst, uint32_t seq,
     new->header.flags = flags;
     new->header.advertised_window = adv_window;
     new->header.ext = ext;
-
+    // 设置checksum
+    set_checksum(new);
+    
     if(len > 0){
         new->data = malloc(len);
         new->data = memcpy(new->data, data, len);
@@ -29,8 +31,6 @@ tju_packet_t* create_packet(uint16_t src, uint16_t dst, uint32_t seq,
         new->data = NULL;
     }
 
-    // 设置checksum
-    set_checksum(new);
         
     return new;
 }
@@ -60,21 +60,21 @@ char* create_packet_buf(uint16_t src, uint16_t dst, uint32_t seq, uint32_t ack,
 int build_state_pkt(char* recv_pkt, char** send_pkt, int flags) {
     int seq = get_seq(recv_pkt) + 464;
     int ack = get_seq(recv_pkt) + 1;
-    int len = 20;
+    int len = 22;
     *send_pkt = create_packet_buf(
         get_dst(recv_pkt),
         get_src(recv_pkt),
         seq,
         ack,
-        20,
-        20,
+        22,
+        22,
         flags,
         0,
         0,
         NULL,
         0
     );
-    return 20;
+    return 22;
 }
 
 /*
@@ -91,31 +91,44 @@ void set_checksum(tju_packet_t* pkt) {
     pkt->header.checksum = cksum;
 }
 
+int tcp_check(tju_packet_t* pkt) {
+    unsigned short cksum = tcp_compute_checksum(pkt);
+    if(pkt->header.checksum != cksum) {
+        printf("checksum error.\n");
+        return FALSE;
+    }
+    // 这里也需要去检查ack
+
+    return TRUE;
+}
+
 static unsigned short tcp_compute_checksum(tju_packet_t* pkt) {
     unsigned short cksum = 0;
-    cksum += (pkt->header.source_port >> 16) & 0xFFFF;
-    cksum += (pkt->header.source_port & 0xFFFF);
+    // cksum += (pkt->header.source_port >> 16) & 0xFFFF;
+    // cksum += (pkt->header.source_port & 0xFFFF);
+    cksum += pkt->header.source_port;
+    printf("checksum: %d.\n", cksum);
 
-    cksum += (pkt->header.destination_port >> 16) & 0xFFFF;
-    cksum += (pkt->header.destination_port & 0xFFFF);
+    // cksum += (pkt->header.destination_port >> 16) & 0xFFFF;
+    // cksum += (pkt->header.destination_port & 0xFFFF);
 
-    cksum += pkt->header.seq_num;
-    cksum += pkt->header.ack_num;
-    cksum += htons(pkt->header.hlen);
-    cksum += htons(pkt->header.plen);
-    cksum += pkt->header.flags;
-    cksum += pkt->header.advertised_window;
-    cksum += pkt->header.ext;
+    // cksum += pkt->header.seq_num;
+    // cksum += pkt->header.ack_num;
+    // cksum += htons(pkt->header.hlen);
+    // cksum += htons(pkt->header.plen);
+    // cksum += pkt->header.flags;
+    // cksum += pkt->header.advertised_window;
+    // cksum += pkt->header.ext;
 
-    int data_len = pkt->header.plen - pkt->header.hlen;
-    char* data = pkt->data;
-    while(data_len > 0) {
-        cksum += *data;
-        data += 1;
-        data_len -= sizeof(char);
-    }
-    cksum = (cksum >> 16) + (cksum & 0xFFFF);
-    cksum = ~cksum;
+    // int data_len = pkt->header.plen - pkt->header.hlen;
+    // char* data = pkt->data;
+    // while(data_len > 0) {
+    //     cksum += *data;
+    //     data += 1;
+    //     data_len -= sizeof(char);
+    // }
+    // cksum = (cksum >> 16) + (cksum & 0xFFFF);
+    // cksum = ~cksum;
     return (unsigned short)cksum;
 }
 
@@ -182,6 +195,13 @@ uint8_t get_ext(char* msg){
     return var;
 }
 
+unsigned short get_checksum(char* msg) {
+    int offset = 20;
+    unsigned short cksum;
+    memcpy(&cksum, msg + offset, SIZE16);
+    return ntohs(cksum);
+}
+
 int is_fin(char* pkt) {
     if(get_flags(pkt) == (ACK | FIN)) {
         return 1;
@@ -244,6 +264,21 @@ char* header_in_char(uint16_t src, uint16_t dst, uint32_t seq, uint32_t ack,
 
 
 	return msg;
+}
+
+// 将buf转换成packet用于计算checksum
+tju_packet_t* buf_to_packet(char* buf) {
+    tju_packet_t* packet = (tju_packet_t*)malloc(sizeof(tju_packet_t));
+    packet->header.source_port = get_src(buf);
+    packet->header.destination_port = get_dst(buf);
+    packet->header.ack_num = get_ack(buf);
+    packet->header.seq_num = get_seq(buf);
+    packet->header.hlen = get_hlen(buf);
+    packet->header.plen = get_plen(buf);
+    packet->header.flags = get_flags(buf);
+    packet->header.advertised_window = get_advertised_window(buf);
+    packet->header.ext = get_ext(buf);
+    packet->header.checksum = get_checksum(buf);
 }
 
 /*
