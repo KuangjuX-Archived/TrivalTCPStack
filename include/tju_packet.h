@@ -23,15 +23,16 @@
 
 // TCP 报文 header部分 的结构定义
 typedef struct {
-	uint16_t source_port;		//2 bytes 源端口
-	uint16_t destination_port;	//2 bytes 目的端口
-	uint32_t seq_num; 			//4 bytes sequence number
-	uint32_t ack_num; 			//4 bytes ack number
-	uint16_t hlen;				//2 bytes 包头长 这个项目里全是20
-	uint16_t plen;				//2 bytes 包总长 包括包头和包携带的数据 20+数据长度 注意总长度不能超过MAX_LEN(1400) 防止IP层分片
-	uint8_t flags;				//1 byte  标志位 比如 SYN FIN ACK 等
-	uint16_t advertised_window; //2 bytes 接收方发送给发送方的建议窗口大小 用于流量控制
-    uint8_t ext;				//1 byte  一些额外的数据 在这个项目里是为了将header的大小凑整到20bytes 没有实际意义
+	uint16_t source_port;		// 2 bytes 源端口
+	uint16_t destination_port;	// 2 bytes 目的端口
+	uint32_t seq_num; 			// 4 bytes sequence number
+	uint32_t ack_num; 			// 4 bytes ack number
+	uint16_t hlen;				// 2 bytes 包头长 这个项目里全是20
+	uint16_t plen;				// 2 bytes 包总长 包括包头和包携带的数据 20+数据长度 注意总长度不能超过MAX_LEN(1400) 防止IP层分片
+	uint8_t flags;				// 1 byte  标志位 比如 SYN FIN ACK 等
+	uint16_t advertised_window; // 2 bytes 接收方发送给发送方的建议窗口大小 用于流量控制
+    uint8_t ext;				// 1 byte  一些额外的数据 在这个项目里是为了将header的大小凑整到20bytes 没有实际意义
+	unsigned short checksum;    // 2 bytes 校验和
 } tju_header_t;
 
 // TCP 报文的结构定义
@@ -41,6 +42,8 @@ typedef struct {
 	char* data;
 } tju_packet_t;
 
+
+void set_checksum(tju_packet_t* pkt);
 
 /*
  输入header所有字段 和 TCP包数据内容及其长度

@@ -28,6 +28,9 @@ tju_packet_t* create_packet(uint16_t src, uint16_t dst, uint32_t seq,
     }else{
         new->data = NULL;
     }
+
+    // 设置checksum
+    set_checksum(new);
         
     return new;
 }
@@ -82,6 +85,40 @@ void free_packet(tju_packet_t* packet){
          free(packet->data);
     free(packet);
 }
+
+void set_checksum(tju_packet_t* pkt) {
+    unsigned short cksum = tcp_compute_checksum(pkt);
+    pkt->header.checksum = cksum;
+}
+
+static unsigned short tcp_compute_checksum(tju_packet_t* pkt) {
+    unsigned short cksum = 0;
+    cksum += (pkt->header.source_port >> 16) & 0xFFFF;
+    cksum += (pkt->header.source_port & 0xFFFF);
+
+    cksum += (pkt->header.destination_port >> 16) & 0xFFFF;
+    cksum += (pkt->header.destination_port & 0xFFFF);
+
+    cksum += pkt->header.seq_num;
+    cksum += pkt->header.ack_num;
+    cksum += htons(pkt->header.hlen);
+    cksum += htons(pkt->header.plen);
+    cksum += pkt->header.flags;
+    cksum += pkt->header.advertised_window;
+    cksum += pkt->header.ext;
+
+    int data_len = pkt->header.plen - pkt->header.hlen;
+    char* data = pkt->data;
+    while(data_len > 0) {
+        cksum += *data;
+        data += 1;
+        data_len -= sizeof(char);
+    }
+    cksum = (cksum >> 16) + (cksum & 0xFFFF);
+    cksum = ~cksum;
+    return (unsigned short)cksum;
+}
+
 
 
 /*
