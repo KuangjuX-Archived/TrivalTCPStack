@@ -64,6 +64,13 @@
 // TCP 接受窗口大小
 #define TCP_RECVWN_SIZE 32*MAX_DLEN // 比如最多放32个满载数据包
 
+// TCP 发送缓存窗口大小
+// #define TCP_RECVWN_SIZE 128*MAX_DLEN
+#define MAX_SENDING_ITEM_NUM 1024 //最大file数
+
+// TCP改进窗口算法的阈值
+#define IMPROVED_WINDOW_THRESHOLD 0.25
+
 // the max size of thread pool
 #define THREAD_POOL_SIZE 16
 
@@ -71,15 +78,14 @@
 // 注释的内容如果想用就可以用 不想用就删掉 仅仅提供思路和灵感
 typedef struct {
 	uint16_t window_size;
-
-//   uint32_t base;
-//   uint32_t nextseq;
+  	uint32_t base;
+    uint32_t nextseq;
 //   uint32_t estmated_rtt;
-//   int ack_cnt;
+    int ack_cnt;
 //   pthread_mutex_t ack_cnt_lock;
 //   struct timeval send_time;
 //   struct timeval timeout;
-//   uint16_t rwnd; 
+    uint16_t rwnd; 
 //   int congestion_status;
 //   uint16_t cwnd; 
 //   uint16_t ssthresh; 
@@ -93,7 +99,7 @@ typedef struct {
 //   received_packet_t* head;
 //   char buf[TCP_RECVWN_SIZE];
 //   uint8_t marked[TCP_RECVWN_SIZE];
-//   uint32_t expect_seq;
+    uint32_t expect_seq;
 } receiver_window_t;
 
 // TCP 窗口 每个建立了连接的TCP都包括发送和接受两个窗口
@@ -121,6 +127,7 @@ typedef struct tju_tcp_t {
 	pthread_mutex_t send_lock; // 发送数据锁
 	char* sending_buf; // 发送数据缓存区
 	int sending_len; // 发送数据缓存长度
+	int sending_item_flag[MAX_SENDING_ITEM_NUM];
 
 	pthread_mutex_t recv_lock; // 接收数据锁
 	char* received_buf; // 接收数据缓存区

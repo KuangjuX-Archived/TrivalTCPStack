@@ -22,6 +22,16 @@ int onTCPPocket(char* pkt){
         is_server = 0;
     }
 
+    tju_packet_t* packet = buf_to_packet(pkt);
+    if(!tcp_check(packet)) {
+        printf("tcp check error.\n");
+        return -1;
+    }
+    if(packet->data != NULL) {
+        free(packet->data);
+    }
+    free(packet);   
+
     int hashval;
 
     // 首先查找已经建立连接的socket哈希表
@@ -49,12 +59,10 @@ int onTCPPocket(char* pkt){
     // 没有的话再查找监听中的socket哈希表
     if (listen_socks[hashval] != NULL && is_server) {
         // 监听的socket只有本地监听ip和端口 没有远端
-        printf("Server receive status packet.\n");
         return tcp_rcv_state_server(listen_socks[hashval], pkt, &conn_addr);
     }
 
     if (connect_sock != NULL && !is_server) {
-        printf("Client receive status packet.\n");
         return tcp_rcv_state_client(connect_sock, pkt, &conn_addr);
     }
 

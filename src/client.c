@@ -16,7 +16,7 @@ int main(int argc, char **argv) {
     tcp_connect(my_socket, target_addr);
 
     // sleep(3);
-
+    printf("send packet.\n");
     tju_send(my_socket, "hello world", 12);
 
     char buf[2021];
