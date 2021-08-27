@@ -275,7 +275,9 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
     while(pthread_mutex_lock(&(sock->recv_lock)) != 0); // 加锁
     memcpy(sock->received_buf + sock->received_len, pkt + DEFAULT_HEADER_LEN, data_len);
     sock->received_len += data_len;
-
+    char* head=malloc(DEFAULT_HEADER_LEN);
+    memcpy(head, pkt, DEFAULT_HEADER_LEN);
+    handle_delay_ack( sock, head);
     pthread_mutex_unlock(&(sock->recv_lock)); // 解锁
     return 0;
 }
@@ -285,7 +287,7 @@ int tju_close (tju_tcp_t* sock){
 }
 
 void handle_delay_ack(tju_tcp_t* sock, char* pkt){
-
+    //# TODO  implement pthread version
 }
 
 // 改进窗口算法。
