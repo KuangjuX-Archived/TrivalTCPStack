@@ -64,11 +64,10 @@ int accept(int sockfd, struct sockaddr *restrict addr,
 */
 
 int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
-    printf("Try to connect......\n");
     memcpy(conn_sock, listen_sock, sizeof(tju_tcp_t));
 
     // 如果全连接队列为空，则阻塞等待
-    printf("Blocking...\n");
+    printf("Wait connection......\n");
     while(sockqueue_is_empty(accept_socks)){}
 
     tju_sock_addr local_addr, remote_addr;
@@ -113,7 +112,6 @@ int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
 因为只要该函数返回, 用户就可以马上使用该socket进行send和recv
 */
 int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
-    printf("Start connecting......\n");
     sock->established_remote_addr = target_addr;
 
     tju_sock_addr local_addr;
@@ -127,13 +125,17 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
     // 将待连接socket储存起来
     connect_sock = sock;
 
+    // 初始化ack和seq
+    uint32_t ack = 0;
+    uint32_t seq = 0;
+
     // 创建客户端socket并将其加入到哈希表中
     // 这里发送SYN_SENT packet向服务端发送请求
     char* send_pkt = create_packet_buf(
         local_addr.port,
         target_addr.port,
-        0,
-        0,
+        seq,
+        ack,
         HEADER_LEN,
         HEADER_LEN,
         SYN_SENT,
@@ -143,10 +145,9 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
         0
     );
     sendToLayer3(send_pkt, HEADER_LEN);
-    printf("send SYN_SENT to layer3.\n");
 
     // 这里阻塞直到socket的状态变为ESTABLISHED
-    printf("Connection block......\n");
+    printf("Wait connection......\n");
     while(sock->state != ESTABLISHED){}
 
     // 将连接后的socket放入哈希表中
@@ -168,8 +169,8 @@ int tju_send(tju_tcp_t* sock, const void *buffer, int len){
     memcpy(data, buffer, len);
 
     char* msg;
-    uint32_t seq = 464;
     uint16_t plen = DEFAULT_HEADER_LEN + len;
+    uint32_t seq = plen;
 
     msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 
               DEFAULT_HEADER_LEN, plen, NO_FLAG, 1, 0, data, len);
@@ -259,7 +260,6 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
         case LISTEN:
             // 判断packet flags 是否为 SYN_SENT 并判断ack的值
             if (flags == SYN_SENT) {
-                printf("receive client status: SYN_SENT.\n");
                 // 第二次握手，服务端修改自己的状态，
                 // 并且发送 SYN_RECV 标志的pakcet，
                 // 加入到半连接哈希表中（暂时不考虑重置状态）                
@@ -267,14 +267,13 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 tju_tcp_t* conn_sock = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
                 conn_sock->bind_addr.ip = conn_addr->ip;
                 conn_sock->bind_addr.port = conn_addr->port;
-                printf("Create client socket.\n");
 
                 // 修改服务端socket的状态
                 sock->state = SYN_SENT;
                 // 加入到半连接哈希表中
                 int index = sockqueue_push(syns_socks, conn_sock);
                 if (index < 0) {
-                    printf("fail to push syns_socks.\n");
+                    printf("Fail to push syns_socks.\n");
                     return -1;
                 }
                 // 将syn_id存储进服务器socket中
@@ -344,7 +343,7 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
                 sock->state = ESTABLISHED;
                 return 0;
             }else {
-                printf("error status.\n");
+                printf("Error status.\n");
                 return -1;
             }
         default:
@@ -381,7 +380,6 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
                 local_sock->state = FIN_WAIT_2;
                 return 0;
             }else {
-                printf("FIN_WAIT_1, flags: %d.\n",flags);
                 return -1;
             }
 
@@ -397,7 +395,6 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
                 printf("CLOSED.\n");
                 return 0;
             }else {
-                printf("FIN_WAIT_2, flags: %d.\n",flags);
                 return -1;
             }
         
@@ -472,4 +469,83 @@ void tcp_send_ack(tju_tcp_t* sock) {
         0
     );
     sendToLayer3(send_pkt, HEADER_LEN);
+}
+
+
+void load_data_to_sending_window(tju_tcp_t *sock, const void *buffer, int len) {
+    while(pthread_mutex_lock(&(sock->send_lock)) != 0);
+    // 判断是否有足够空间存储数据
+    if(sock->sending_len+len>TCP_RECVWN_SIZE){
+        printf("error: too large data load to sending buffer.");
+        exit(-1);
+    }
+    //将数据拷贝进入buffer
+    memcpy(sock->sending_buf+sock->sending_len,buffer,len);
+    //更新sending_buffer的大小
+    sock->sending_len+=len;
+    //存储这个data的大小
+    push(sock->sending_item_flag,MAX_SENDING_ITEM_NUM,len);
+    pthread_mutex_unlock(&(sock->recv_lock));
+}
+
+//根据sending len自动切分tcp data发送buffer中内容到layer3,最后一个包的
+void sending_buffer_to_layer3(tju_tcp_t *sock,int len,int push_bit_flag){
+    //#TODO ! some params of create_packet_buf are WRONG for a complete implementation, FIX it for a later time.
+    // 完整包数
+    int full_pkt_nums=len/MAX_DLEN;
+    //多出来的
+    int left_data_len=len%MAX_DLEN;
+    for(int i=0;i<full_pkt_nums;i++){
+        char * send_data;
+        send_data=malloc(MAX_DLEN);
+        memcpy(send_data,sock->sending_buf+i*MAX_DLEN,MAX_DLEN);
+        char* msg;
+        // calculate the right seq ack
+        uint32_t seq = 0;
+        uint32_t ack=0;
+        uint16_t plen = DEFAULT_HEADER_LEN + MAX_DLEN;
+        if(i==full_pkt_nums-1&&left_data_len==0){
+            msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, ack,
+                                    DEFAULT_HEADER_LEN, plen, PSH, 2000, 0, send_data, MAX_DLEN);
+        }else{
+            msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, ack,
+                                    DEFAULT_HEADER_LEN, plen, NO_FLAG, 2000, 0, send_data, MAX_DLEN);
+        }
+        sendToLayer3(msg, plen);
+    }
+    if(left_data_len!=0){
+        char * send_data;
+        send_data = malloc(len);
+        memcpy(send_data,sock->sending_buf+full_pkt_nums*MAX_DLEN,left_data_len);
+        char* msg;
+        // calculate the right seq ack
+        uint32_t seq = 0;
+        uint32_t ack=0;
+        uint16_t plen = DEFAULT_HEADER_LEN + left_data_len;
+        msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, ack,
+                                DEFAULT_HEADER_LEN, plen, PSH, 2000, 0, send_data, left_data_len);
+        sendToLayer3(msg, plen);
+    }
+    while(pthread_mutex_lock(&(sock->send_lock)) != 0);
+    memcpy(sock->sending_buf,sock->sending_buf+len,sock->sending_len-len);
+    sock->sending_len-=len;
+    pthread_mutex_unlock(&(sock->recv_lock));
+}
+
+void calculate_sending_buffer_depend_on_rwnd(tju_tcp_t* sock){
+    //    int if_nagle_flag=FALSE;
+    // #TODO Nagle alg
+    // 两种情况
+    if(sock->window.wnd_send->rwnd>=sock->sending_len){
+        sending_buffer_to_layer3(sock,sock->sending_len,TRUE);
+    }else{
+        // #TODO blow code could block the thread, rewrite later time.
+        while(sock->sending_len!=0){
+            sending_buffer_to_layer3(sock,sock->window.wnd_send->rwnd,TRUE);
+            while(pthread_mutex_lock(&(sock->send_lock)) != 0);
+            memcpy(sock->sending_buf,sock->sending_buf+sock->window.wnd_send->rwnd,sock->sending_len-sock->window.wnd_send->rwnd);
+            sock->sending_len-=sock->window.wnd_send->rwnd;
+            pthread_mutex_unlock(&(sock->recv_lock));
+        }
+    }
 }

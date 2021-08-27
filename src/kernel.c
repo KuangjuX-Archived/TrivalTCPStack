@@ -27,6 +27,9 @@ int onTCPPocket(char* pkt){
         printf("tcp check error.\n");
         return -1;
     }
+    if(packet->data != NULL) {
+        free(packet->data);
+    }
     free(packet);   
 
     int hashval;

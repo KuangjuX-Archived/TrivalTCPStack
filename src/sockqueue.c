@@ -1,7 +1,6 @@
 #include "sockqueue.h"
 
 void sockqueue_init(sock_queue** q) {
-    printf("init queue......\n");
     *q = (sock_queue*)malloc(sizeof(sock_queue));
     (*q)->size = 0;
     (*q)->base = NULL;

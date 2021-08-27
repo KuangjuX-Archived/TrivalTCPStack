@@ -57,9 +57,9 @@ char* create_packet_buf(uint16_t src, uint16_t dst, uint32_t seq, uint32_t ack,
 
 // 根据接受到的packet构造发送的packet，返回packet的len
 int build_state_pkt(char* recv_pkt, char** send_pkt, int flags) {
-    int seq = get_seq(recv_pkt) + 464;
-    int ack = get_seq(recv_pkt) + 1;
     int len = HEADER_LEN;
+    int seq = get_seq(recv_pkt) + len;
+    int ack = get_seq(recv_pkt) + 1;
     *send_pkt = create_packet_buf(
         get_dst(recv_pkt),
         get_src(recv_pkt),
@@ -99,6 +99,12 @@ int tcp_check(tju_packet_t* pkt) {
     // 这里也需要去检查ack
 
     return TRUE;
+}
+
+int tcp_check_seq(tju_packet_t* pkt, tju_tcp_t* sock) {
+    if(pkt->header.seq_num == sock->window.wnd_recv->expect_seq) {
+        return 0;
+    }
 }
 
 static unsigned short tcp_compute_checksum(tju_packet_t* pkt) {
@@ -283,9 +289,11 @@ tju_packet_t* buf_to_packet(char* buf) {
     // 将data从buf拷贝到packet中
     int len = packet->header.plen - packet->header.hlen;
     int offset = packet->header.hlen;
-    packet->data = (char*)malloc(len);
     if (len > 0) {
+        packet->data = (char*)malloc(len);
         memcpy(packet->data, buf + offset, len);
+    }else {
+        packet->data = NULL;
     }
 
     return packet;
