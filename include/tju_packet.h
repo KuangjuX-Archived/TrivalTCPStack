@@ -38,7 +38,7 @@ typedef struct {
 // TCP 报文的结构定义
 typedef struct {
 	tju_header_t header;
-	// struct timeval sent_time;
+	struct timeval sent_time;
 	char* data;
 } tju_packet_t;
 
