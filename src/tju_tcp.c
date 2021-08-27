@@ -134,15 +134,15 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
         target_addr.port,
         0,
         0,
-        20,
-        20,
+        HEADER_LEN,
+        HEADER_LEN,
         SYN_SENT,
         0,
         0,
         NULL,
         0
     );
-    sendToLayer3(send_pkt, 20);
+    sendToLayer3(send_pkt, HEADER_LEN);
     printf("send SYN_SENT to layer3.\n");
 
     // 这里阻塞直到socket的状态变为ESTABLISHED
@@ -249,7 +249,6 @@ int tcp_close (tju_tcp_t* sock){
 }
 
 int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
-    tju_packet_t* packet = buf_to_packet(pkt);
     uint8_t flags = get_flags(pkt);
     // 通过socket状态进行处理
     switch (sock->state) {
@@ -259,7 +258,7 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
             return -1;
         case LISTEN:
             // 判断packet flags 是否为 SYN_SENT 并判断ack的值
-            if (flags == SYN_SENT && tcp_check(packet)) {
+            if (flags == SYN_SENT) {
                 printf("receive client status: SYN_SENT.\n");
                 // 第二次握手，服务端修改自己的状态，
                 // 并且发送 SYN_RECV 标志的pakcet，
@@ -292,7 +291,7 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 return -1;
             }
         case SYN_SENT:
-            if (flags == ESTABLISHED && tcp_check(packet)) {
+            if (flags == ESTABLISHED) {
                 // 第三次握手，服务端发送ACK报文， 服务端将自己的socket变为ESTABLISHED，
                 // 从syns_socks取出对应的socket并加入到accept_socks中
                 sock->state = ESTABLISHED;
@@ -317,11 +316,10 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
 }
 
 int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
-    tju_packet_t* packet = buf_to_packet(pkt);
     uint8_t flags = get_flags(pkt);
     switch(flags) {
         case SYN_RECV:
-            if(sock->state == SYN_SENT && tcp_check(packet)) {
+            if(sock->state == SYN_SENT) {
                 // 随便编的seq
                 int seq = get_seq(pkt) + 464;
                 int ack = get_seq(pkt) + 1;
@@ -333,15 +331,15 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
                     conn_sock->port,
                     seq,
                     ack,
-                    22,
-                    22,
+                    HEADER_LEN,
+                    HEADER_LEN,
                     ESTABLISHED,
                     0,
                     0,
                     NULL,
                     0
                 );
-                sendToLayer3(send_pkt, 20);
+                sendToLayer3(send_pkt, HEADER_LEN);
                 // 将socket的状态变为ESTABLISHED
                 sock->state = ESTABLISHED;
                 return 0;
@@ -357,12 +355,11 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
 
 // 事实上除了通过判断recv_pkt的flags时也需要检查ack，这里暂时没有实现
 int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
-    tju_packet_t* packet = buf_to_packet(recv_pkt);
     uint8_t flags = get_flags(recv_pkt);
     switch(local_sock->state) {
         case ESTABLISHED:
             // 服务端接受客户端发起的close请求
-            if(flags == (FIN | ACK) && tcp_check(packet)) {
+            if(flags == (FIN | ACK)) {
                 // 将本地socket状态修改为CLOS_WAIT
                 local_sock->state = CLOSE_WAIT;
                 // 向对方发送ACK
@@ -379,7 +376,7 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
             }
 
         case FIN_WAIT_1:
-            if(flags == ACK && tcp_check(packet)) {
+            if(flags == ACK) {
                 // 这里将状态修改为FIN_WAIT_2,等待对方继续发送分组
                 local_sock->state = FIN_WAIT_2;
                 return 0;
@@ -390,7 +387,7 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
 
 
         case FIN_WAIT_2:
-            if(flags == (FIN | ACK) && tcp_check(packet)) {
+            if(flags == (FIN | ACK)) {
                 tcp_send_ack(local_sock);
                 local_sock->state = TIME_WAIT;
                 // 等待2 * MSL 时间，释放socket资源
@@ -420,7 +417,7 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
         
         case LAST_ACK:
             // 关闭
-            if(flags == ACK && tcp_check(packet)) {
+            if(flags == ACK) {
                 printf("CLOSED.\n");
                 local_sock->state = CLOSED;
                 // 释放socket资源
@@ -446,15 +443,15 @@ void tcp_send_fin(tju_tcp_t* sock) {
         sock->established_remote_addr.port,
         seq,
         ack,
-        22,
-        22,
+        HEADER_LEN,
+        HEADER_LEN,
         flags,
         0,
         0,
         NULL,
         0
     );
-    sendToLayer3(send_pkt, 20);
+    sendToLayer3(send_pkt, HEADER_LEN);
 }
 
 void tcp_send_ack(tju_tcp_t* sock) {
@@ -466,13 +463,13 @@ void tcp_send_ack(tju_tcp_t* sock) {
         sock->established_remote_addr.port,
         seq,
         ack,
-        22,
-        22,
+        HEADER_LEN,
+        HEADER_LEN,
         ACK,
         0,
         0,
         NULL,
         0
     );
-    sendToLayer3(send_pkt, 20);
+    sendToLayer3(send_pkt, HEADER_LEN);
 }

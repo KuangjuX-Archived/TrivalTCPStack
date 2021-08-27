@@ -21,17 +21,16 @@ tju_packet_t* create_packet(uint16_t src, uint16_t dst, uint32_t seq,
     new->header.flags = flags;
     new->header.advertised_window = adv_window;
     new->header.ext = ext;
-    // 设置checksum
-    set_checksum(new);
-    
+
     if(len > 0){
         new->data = malloc(len);
         new->data = memcpy(new->data, data, len);
     }else{
         new->data = NULL;
     }
+    // 设置checksum
+    set_checksum(new);
 
-        
     return new;
 }
 
@@ -60,21 +59,21 @@ char* create_packet_buf(uint16_t src, uint16_t dst, uint32_t seq, uint32_t ack,
 int build_state_pkt(char* recv_pkt, char** send_pkt, int flags) {
     int seq = get_seq(recv_pkt) + 464;
     int ack = get_seq(recv_pkt) + 1;
-    int len = 22;
+    int len = HEADER_LEN;
     *send_pkt = create_packet_buf(
         get_dst(recv_pkt),
         get_src(recv_pkt),
         seq,
         ack,
-        22,
-        22,
+        len,
+        len,
         flags,
         0,
         0,
         NULL,
         0
     );
-    return 22;
+    return len;
 }
 
 /*
@@ -104,31 +103,29 @@ int tcp_check(tju_packet_t* pkt) {
 
 static unsigned short tcp_compute_checksum(tju_packet_t* pkt) {
     unsigned short cksum = 0;
-    // cksum += (pkt->header.source_port >> 16) & 0xFFFF;
-    // cksum += (pkt->header.source_port & 0xFFFF);
-    cksum += pkt->header.source_port;
-    printf("checksum: %d.\n", cksum);
+    cksum += (pkt->header.source_port >> 16) & 0xFFFF;
+    cksum += (pkt->header.source_port & 0xFFFF);
 
-    // cksum += (pkt->header.destination_port >> 16) & 0xFFFF;
-    // cksum += (pkt->header.destination_port & 0xFFFF);
+    cksum += (pkt->header.destination_port >> 16) & 0xFFFF;
+    cksum += (pkt->header.destination_port & 0xFFFF);
 
-    // cksum += pkt->header.seq_num;
-    // cksum += pkt->header.ack_num;
-    // cksum += htons(pkt->header.hlen);
-    // cksum += htons(pkt->header.plen);
-    // cksum += pkt->header.flags;
-    // cksum += pkt->header.advertised_window;
-    // cksum += pkt->header.ext;
+    cksum += pkt->header.seq_num;
+    cksum += pkt->header.ack_num;
+    cksum += htons(pkt->header.hlen);
+    cksum += htons(pkt->header.plen);
+    cksum += pkt->header.flags;
+    cksum += pkt->header.advertised_window;
+    cksum += pkt->header.ext;
 
-    // int data_len = pkt->header.plen - pkt->header.hlen;
+    int data_len = pkt->header.plen - pkt->header.hlen;
     // char* data = pkt->data;
     // while(data_len > 0) {
     //     cksum += *data;
     //     data += 1;
     //     data_len -= sizeof(char);
     // }
-    // cksum = (cksum >> 16) + (cksum & 0xFFFF);
-    // cksum = ~cksum;
+    cksum = (cksum >> 16) + (cksum & 0xFFFF);
+    cksum = ~cksum;
     return (unsigned short)cksum;
 }
 
@@ -220,7 +217,7 @@ int is_fin(char* pkt) {
  */
 char* header_in_char(uint16_t src, uint16_t dst, uint32_t seq, uint32_t ack,
     uint16_t hlen, uint16_t plen, uint8_t flags, uint16_t adv_window, 
-    uint8_t ext){
+    uint8_t ext, unsigned short checksum){
 
 	uint16_t temp16;
     uint32_t temp32;
@@ -262,6 +259,9 @@ char* header_in_char(uint16_t src, uint16_t dst, uint32_t seq, uint32_t ack,
     memcpy(msg+index, &ext, SIZE8);
     index += SIZE8;
 
+    temp16 = htons(checksum);
+    memcpy(msg + index, &temp16, SIZE16);
+    index += SIZE16;
 
 	return msg;
 }
@@ -279,6 +279,16 @@ tju_packet_t* buf_to_packet(char* buf) {
     packet->header.advertised_window = get_advertised_window(buf);
     packet->header.ext = get_ext(buf);
     packet->header.checksum = get_checksum(buf);
+
+    // 将data从buf拷贝到packet中
+    int len = packet->header.plen - packet->header.hlen;
+    int offset = packet->header.hlen;
+    packet->data = (char*)malloc(len);
+    if (len > 0) {
+        memcpy(packet->data, buf + offset, len);
+    }
+
+    return packet;
 }
 
 /*
@@ -289,7 +299,7 @@ char* packet_to_buf(tju_packet_t* p){
     char* msg = header_in_char(p->header.source_port, p->header.destination_port, 
         p->header.seq_num, p->header.ack_num, p->header.hlen, p->header.plen, 
         p->header.flags, p->header.advertised_window, 
-        p->header.ext);
+        p->header.ext, p->header.checksum);
     
     if(p->header.plen > p->header.hlen){
         memcpy(msg+(p->header.hlen), p->data, (p->header.plen - (p->header.hlen)));

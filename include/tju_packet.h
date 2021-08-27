@@ -14,12 +14,12 @@
 #include "global.h"
 
 
-#define DEFAULT_HEADER_LEN 20
+#define DEFAULT_HEADER_LEN (sizeof(tju_header_t))
 #define SYN_FLAG_MASK 0x8
 #define ACK_FLAG_MASK 0x4
 #define FIN_FLAG_MASK 0x2
 
-#define HEADER_LEN 20
+#define HEADER_LEN (sizeof(tju_header_t))
 
 // TCP 报文 header部分 的结构定义
 typedef struct {
@@ -38,7 +38,7 @@ typedef struct {
 // TCP 报文的结构定义
 typedef struct {
 	tju_header_t header;
-	struct timeval sent_time;
+	// struct timeval sent_time;
 	char* data;
 } tju_packet_t;
 
@@ -100,6 +100,6 @@ char* packet_to_buf(tju_packet_t* packet);
 tju_packet_t* buf_to_packet(char* buf);
 char* header_in_char(uint16_t src, uint16_t dst, uint32_t seq, uint32_t ack,
     uint16_t hlen, uint16_t plen, uint8_t flags, uint16_t adv_window, 
-    uint8_t ext);
+    uint8_t ext, unsigned short checksum);
 
 #endif

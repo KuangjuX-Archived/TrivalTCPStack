@@ -46,13 +46,13 @@ int main(int argc, char **argv) {
     }
 
     char buf[512];
-    tju_recv(conn_sock, (void*)buf, 512);
+    tju_recv(conn_sock, (void*)buf, 12);
     printf("%s\n", buf);
-    tju_send(conn_sock, (void*)buf, 512);
+    tju_send(conn_sock, (void*)buf, 12);
 
-    tju_recv(conn_sock, (void*)buf, 512);
+    tju_recv(conn_sock, (void*)buf, 10);
     printf("%s\n", buf);
-    tju_send(conn_sock, (void*)buf, 512);
+    tju_send(conn_sock, (void*)buf, 10);
     while(TRUE){}
 
     return EXIT_SUCCESS;
