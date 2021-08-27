@@ -484,7 +484,7 @@ void load_data_to_sending_window(tju_tcp_t *sock, const void *buffer, int len) {
     //更新sending_buffer的大小
     sock->sending_len+=len;
     //存储这个data的大小
-    push(sock->sending_item_flag,MAX_SENDING_ITEM_NUM,len);
+    // push(sock->sending_item_flag,MAX_SENDING_ITEM_NUM,len);
     pthread_mutex_unlock(&(sock->recv_lock));
 }
 

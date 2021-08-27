@@ -65,7 +65,7 @@
 #define TCP_RECVWN_SIZE 32*MAX_DLEN // 比如最多放32个满载数据包
 
 // TCP 发送缓存窗口大小
-#define TCP_RECVWN_SIZE 128*MAX_DLEN
+// #define TCP_RECVWN_SIZE 128*MAX_DLEN
 #define MAX_SENDING_ITEM_NUM 1024 //最大file数
 
 // TCP改进窗口算法的阈值
