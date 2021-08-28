@@ -341,6 +341,11 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
 
 **涉及到的方法：**
 - `void tcp_init_timer(tju_tcp_t* sock, void (*retransmit_handler)(unsigned long))`: 初始化定时器并注册回调函数。 参数：待注册socket， 回调函数指针。 无返回值。
+- `void tcp_init_rtt(tju_tcp_t* sock)`： 初始化RTT，仅仅在 `tcp_init_timer()` 中被调用。 参数： 待注册socket。 无返回值。
+- `void tcp_set_estimator(tju_tcp_t* sock, float mrtt_us)`： 更新平滑RTT和RTT偏差值。 参数： 本地socket， 接收到ACK的RTT。 无返回值。
+- `void tcp_bound_rto(tju_tcp_t* sock)`： 更新RTO，在 `tcp_set_estimator()` 后调用。 参数： 本地socket。 无返回值。
+- `void tcp_set_rto(tju_tcp_t* sock)`：  仅仅调用 `tcp_bound_rto()`。
+- `int tcp_ack_update_rtt(tju_tcp_t* sock, float seq_rtt_us, float sack_rtt_us)`： 收到 ACK 后更新 RTT，调用 `tcp_set_rto()` 和 `tcp_set_estimator()`。 参数：本地socket， 收到的RTT， 保底RTT。 成功返回0，失败返回-1。
 
 ## 流量控制
 
