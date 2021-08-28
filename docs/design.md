@@ -5,7 +5,7 @@
         </br>
         <img src="https://github.com/KuangjuX/TJU-typora-latex-theme/blob/main/image/logo_1.png?raw=true" alt="校名" style="width:100%;"/>
     <div style="text-align: center; font-family:华文黑体Bold; font-size:26px; font-weight:900;">
-        TrivialTCP设计文档
+        TrivialTCP 设计文档
     </div>
     </br></br>
     <div style="width:60%;margin: 0 auto;height:0;padding-bottom:40%;">
