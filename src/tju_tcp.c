@@ -185,7 +185,7 @@ int tju_send(tju_tcp_t* sock, const void *buffer, int len){
               DEFAULT_HEADER_LEN, plen, NO_FLAG, 1, 0, data, len);
     tju_packet_t* send_packet = buf_to_packet(msg);
     if(seq < base + window_size) {
-        sock->window.wnd_send->send_windows[seq % TCP_SEND_SIZE] = send_packet;
+        sock->window.wnd_send->send_windows[seq % TCP_SEND_WINDOW_SIZE] = send_packet;
         sendToLayer3(msg, plen);
     }
     if(base == seq) {
