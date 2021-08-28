@@ -65,7 +65,7 @@
 #define TCP_RECVWN_SIZE 32*MAX_DLEN // 比如最多放32个满载数据包
 
 // TCP 发送缓存窗口大小
-// #define TCP_RECVWN_SIZE 128*MAX_DLEN
+#define TCP_SEND_SIZE 128
 #define MAX_SENDING_ITEM_NUM 1024 //最大file数
 
 // TCP改进窗口算法的阈值
@@ -77,12 +77,13 @@
 // TCP 发送窗口
 // 注释的内容如果想用就可以用 不想用就删掉 仅仅提供思路和灵感
 typedef struct {
+	tju_packet_t send_windows[TCP_SEND_SIZE];
 	uint16_t window_size;
   	uint32_t base;
     uint32_t nextseq;
 //   uint32_t estmated_rtt;
     int ack_cnt;
-//   pthread_mutex_t ack_cnt_lock;
+    pthread_mutex_t ack_cnt_lock;
 //   struct timeval send_time;
 //   struct timeval timeout;
     uint16_t rwnd; 
@@ -93,12 +94,13 @@ typedef struct {
 
 // TCP 接受窗口
 // 注释的内容如果想用就可以用 不想用就删掉 仅仅提供思路和灵感
+// 发现窗口用字节数描述太难实现了，暂时使用packet来代替
 typedef struct {
 	char received[TCP_RECVWN_SIZE];
 
-//   received_packet_t* head;
-//   char buf[TCP_RECVWN_SIZE];
-//   uint8_t marked[TCP_RECVWN_SIZE];
+    //  received_packet_t* head;
+    char buf[TCP_RECVWN_SIZE];
+    uint8_t marked[TCP_RECVWN_SIZE];
     uint32_t expect_seq;
 } receiver_window_t;
 

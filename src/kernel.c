@@ -1,8 +1,19 @@
 #include "kernel.h"
 
+// 建立连接后接收分组需要通过tju_handle_packet，这里需要判断ack和seq 
 int tju_handle_packet(tju_tcp_t* sock, char* pkt){
+    switch (tcp_check_seq(pkt, sock)) {
+        case -1:
+            // seq num 不正确，丢弃或者存起来
+        case 0:
+            // seq num 正确，此时应当应当移动窗口
+        case 1: 
+            // 此时为对方发送来的分组
+        default:
+            printf("tju_handle_packet: incorrect sequence number.\n");
+            return -1;
+    }
     uint32_t data_len = get_plen(pkt) - DEFAULT_HEADER_LEN;
-    // 这里要判断去处理三次握手和连接关闭的情况，这是不走缓冲区的过程
 
     // 把收到的数据放到接受缓冲区
     while(pthread_mutex_lock(&(sock->recv_lock)) != 0); // 加锁
@@ -18,7 +29,7 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
     pthread_mutex_unlock(&(sock->recv_lock)); // 解锁
 
 
-    return 1;
+    return 0;
 }
 
 /*
@@ -67,8 +78,7 @@ int onTCPPocket(char* pkt){
         }else if(!is_server &&(is_fin(pkt) || connect_sock->state != ESTABLISHED)) {
             return tcp_state_close(connect_sock, pkt);
         }else {
-            tju_handle_packet(established_socks[hashval], pkt);
-            return 0;
+            return tju_handle_packet(established_socks[hashval], pkt);
         }
     }
 

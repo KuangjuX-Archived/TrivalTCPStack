@@ -177,12 +177,21 @@ int tju_send(tju_tcp_t* sock, const void *buffer, int len){
 
     char* msg;
     uint16_t plen = DEFAULT_HEADER_LEN + len;
-    uint32_t seq = plen;
+    uint32_t seq = sock->window.wnd_send->nextseq;
+    uint32_t base = sock->window.wnd_send->base;
+    uint16_t window_size = sock->window.wnd_send->window_size;
 
     msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 
               DEFAULT_HEADER_LEN, plen, NO_FLAG, 1, 0, data, len);
-
-    sendToLayer3(msg, plen);
+    tju_packet_t* send_packet = buf_to_packet(msg);
+    if(seq < base + window_size) {
+        sock->window.wnd_send->send_windows[seq % TCP_SEND_SIZE] = send_packet;
+        sendToLayer3(msg, plen);
+    }
+    if(base == seq) {
+        // 开始计时
+    }
+    sock->window.wnd_send->nextseq += 1;
     
     return 0;
 }
