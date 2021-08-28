@@ -190,6 +190,7 @@ int tju_send(tju_tcp_t* sock, const void *buffer, int len){
     }
     if(base == seq) {
         // 开始计时
+        tcp_start_timer(sock);
     }
     sock->window.wnd_send->nextseq += 1;
     

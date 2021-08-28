@@ -33,6 +33,9 @@ void tcp_bound_rto(tju_tcp_t* sock);
 void tcp_set_rto(tju_tcp_t* sock);
 int tcp_ack_update_rtt(tju_tcp_t* sock, float seq_rtt_us, float sack_rtt_us);
 
+void tcp_start_timer(tju_tcp_t* sock);
+void tcp_stop_timer(tju_tcp_t* sock, float mtime);
+
 void tcp_write_timer_handler(tju_tcp_t* sock);
 
 #endif

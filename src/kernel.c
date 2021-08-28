@@ -2,16 +2,45 @@
 
 // 建立连接后接收分组需要通过tju_handle_packet，这里需要判断ack和seq 
 int tju_handle_packet(tju_tcp_t* sock, char* pkt){
-    switch (tcp_check_seq(pkt, sock)) {
-        case -1:
-            // seq num 不正确，丢弃或者存起来
-        case 0:
-            // seq num 正确，此时应当应当移动窗口
-        case 1: 
-            // 此时为对方发送来的分组
-        default:
-            printf("tju_handle_packet: incorrect sequence number.\n");
-            return -1;
+    uint8_t flag = get_flags(pkt);
+    uint32_t seq = get_seq(pkt);
+    if(flag == ACK) {
+        // 此处为发送方，收到接收方传来的ACK
+        // 需要检查是否有“捎带”的数据
+        uint32_t seq = get_seq(pkt);
+        sock->window.wnd_send->base = seq + 1;
+        uint32_t base = sock->window.wnd_send->base;
+        uint32_t next_seq = sock->window.wnd_send->nextseq;
+        if(base == next_seq) {
+            // TODO: 这里应当写收到ACK所需时间，还没想好怎么写
+            tcp_stop_timer(sock, 1);
+        }else {
+            tcp_start_timer(sock);
+        }
+
+        if(get_plen(pkt) <= get_hlen(pkt)) {
+            return 0;
+        }
+        // 此时有"捎带"数据，应当继续执行将"捎带"数据存入到received_buf中
+
+    }else {
+        // 此处为接收方，收到发送方传来的ACK
+        // 这里必须保证seq和expected_seq相同，否则是失序的packet
+        uint32_t expected_seq = sock->window.wnd_recv->expect_seq;
+        if(seq > expected_seq) {
+            // 接受到了之后的seq
+            // 选择丢弃或者存起来(选择重传)
+
+            // 这里先丢弃
+            printf("Disorder sequence number.\n");
+            return 0;
+        }else if(seq == expected_seq) {
+            // 向对方发送ACK
+            // 修改自己的expected_seq
+            tcp_send_ack(sock);
+            sock->window.wnd_recv->expect_seq += 1;
+            // 继续执行，接受数据
+        }
     }
     uint32_t data_len = get_plen(pkt) - DEFAULT_HEADER_LEN;
 
