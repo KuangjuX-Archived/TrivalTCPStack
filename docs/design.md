@@ -200,6 +200,11 @@ int onTCPPocket(char* pkt){
 
 其中， `tcp_rcv_state_server()` 和 `tcp_rcv_state_client()` 方法来分别处理服务端与客户端握手时的状态机转换过程。
 
+**涉及到的方法：**   
+    
+- `int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr);`: 服务端三次握手的状态转换过程。 参数：服务端socket， 收到的分组，待连接的服务端socket。返回值为处理是否成功，成功返回0，失败返回1。
+- `int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock)`: 客户端三次握手的状态转换过程。 参数：客户端socket，收到的分组，待连接的服务端socket。返回值为处理是否成功，成功返回0，失败返回1。
+
 
 ![](image/handshake.png)
 
@@ -212,6 +217,9 @@ int onTCPPocket(char* pkt){
 - 一端主动申请关闭
 - TCP从网络中接受到了FIN标志位的分组
 - 两端同时关闭连接
+   
+**涉及到的方法：**
+- `int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt)`: 关闭连接过程的状态机转换。参数： 本地socket， 接收到的分组。返回值为处理是否成功，成功返回0，失败返回-1。
 
 
 
@@ -330,6 +338,9 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
 
 
 ```
+
+**涉及到的方法：**
+- `void tcp_init_timer(tju_tcp_t* sock, void (*retransmit_handler)(unsigned long))`: 初始化定时器并注册回调函数。 参数：待注册socket， 回调函数指针。 无返回值。
 
 ## 流量控制
 
