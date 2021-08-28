@@ -1,4 +1,26 @@
 #include "kernel.h"
+
+int tju_handle_packet(tju_tcp_t* sock, char* pkt){
+    uint32_t data_len = get_plen(pkt) - DEFAULT_HEADER_LEN;
+    // 这里要判断去处理三次握手和连接关闭的情况，这是不走缓冲区的过程
+
+    // 把收到的数据放到接受缓冲区
+    while(pthread_mutex_lock(&(sock->recv_lock)) != 0); // 加锁
+
+    if(sock->received_buf == NULL){
+        sock->received_buf = malloc(data_len);
+    }else {
+        sock->received_buf = realloc(sock->received_buf, sock->received_len + data_len);
+    }
+    memcpy(sock->received_buf + sock->received_len, pkt + DEFAULT_HEADER_LEN, data_len);
+    sock->received_len += data_len;
+
+    pthread_mutex_unlock(&(sock->recv_lock)); // 解锁
+
+
+    return 1;
+}
+
 /*
 模拟Linux内核收到一份TCP报文的处理函数
 */

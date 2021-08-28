@@ -21,6 +21,10 @@ struct sock_queue* syns_socks;
 // 全连接队列
 struct sock_queue* accept_socks;
 
+
+// 收到packet时处理方法
+int tju_handle_packet(tju_tcp_t* sock, char* pkt);
+
 /*
 模拟Linux内核收到一份TCP报文的处理函数
 */

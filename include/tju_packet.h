@@ -48,6 +48,8 @@ void set_checksum(tju_packet_t* pkt);
 
 int tcp_check(tju_packet_t* pkt);
 
+int tcp_check_seq(tju_packet_t* pkt, tju_tcp_t* sock);
+
 // 计算checksum
 static unsigned short tcp_compute_checksum(tju_packet_t* pkt);
 
