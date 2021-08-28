@@ -114,7 +114,7 @@ void tcp_start_timer(tju_tcp_t* sock) {
 
 // 停止计时并返回ack所花费时间
 void tcp_stop_timer(tju_tcp_t* sock, float mtime) {
-    // 重置计时器
+    // TODO: 重置计时器
     tcp_ack_update_rtt(sock, mtime, 1);
 }
 

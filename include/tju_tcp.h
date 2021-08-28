@@ -54,9 +54,6 @@ int tju_recv (tju_tcp_t* sock, void *buffer, int len);
 */
 int tcp_close (tju_tcp_t* sock);
 
-
-int tju_handle_packet(tju_tcp_t* sock, char* pkt);
-
 // 服务端状态处理
 int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr);
 
@@ -69,6 +66,8 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt);
 // 传输控制位packet
 void tcp_send_fin(tju_tcp_t* sock);
 void tcp_send_ack(tju_tcp_t* sock);
+
+void tcp_update_expected_seq(tju_tcp_t* tcp, tju_packet_t* pkt);
 
 
 int handle_improved_window();

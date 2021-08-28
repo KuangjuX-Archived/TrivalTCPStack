@@ -101,9 +101,23 @@ int tcp_check(tju_packet_t* pkt) {
     return TRUE;
 }
 
+// 检查序列号，此时需要区分发送方和接收方。
 int tcp_check_seq(tju_packet_t* pkt, tju_tcp_t* sock) {
-    if(pkt->header.seq_num == sock->window.wnd_recv->expect_seq) {
-        return 0;
+    // 首先查看收到的是不是ACK，若是ACK则查看seqnum是否正确，否则是
+    // 传输的分组，直接放入队列中。
+    if(get_flags(pkt) == ACK) {
+        // 发送方收到ACK
+        if(get_ack(pkt) == sock->window.wnd_recv->expect_seq) {
+            return 0;
+        }else {
+            return -1;
+        }
+    }else {
+        // 接收方收到发送方发送来的pakcet，此时应当检查发送来的ack是否与expected_seq一致
+        // 一致则将其放入缓冲区中，否则丢弃或者存起来
+        if(get_seq(pkt) == sock->window.wnd_recv->expect_seq) {
+            
+        }
     }
 }
 

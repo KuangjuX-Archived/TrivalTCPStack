@@ -3,6 +3,12 @@
 #include "timer.h"
 
 /*
+=======================================================
+====================系统调用API函数如下===================
+=======================================================
+*/
+
+/*
 创建 TCP socket 
 初始化对应的结构体
 设置初始状态为 CLOSED
@@ -24,8 +30,9 @@ tju_tcp_t* tju_socket(){
         exit(-1);
     }
 
-    sock->window.wnd_recv = NULL;
-    sock->window.wnd_recv = NULL;
+    // 初始化窗口
+    sock->window.wnd_recv = (receiver_window_t*)malloc(sizeof(receiver_window_t));
+    sock->window.wnd_send = (sender_window_t*)malloc(sizeof(sender_window_t));
 
     // 初始化定时器及回调函数
     tcp_init_timer(sock, tcp_write_timer_handler);
@@ -170,12 +177,22 @@ int tju_send(tju_tcp_t* sock, const void *buffer, int len){
 
     char* msg;
     uint16_t plen = DEFAULT_HEADER_LEN + len;
-    uint32_t seq = plen;
+    uint32_t seq = sock->window.wnd_send->nextseq;
+    uint32_t base = sock->window.wnd_send->base;
+    uint16_t window_size = sock->window.wnd_send->window_size;
 
     msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 
               DEFAULT_HEADER_LEN, plen, NO_FLAG, 1, 0, data, len);
-
-    sendToLayer3(msg, plen);
+    tju_packet_t* send_packet = buf_to_packet(msg);
+    if(seq < base + window_size) {
+        sock->window.wnd_send->send_windows[seq % TCP_SEND_WINDOW_SIZE] = send_packet;
+        sendToLayer3(msg, plen);
+    }
+    if(base == seq) {
+        // 开始计时
+        tcp_start_timer(sock);
+    }
+    sock->window.wnd_send->nextseq += 1;
     
     return 0;
 }
@@ -211,27 +228,6 @@ int tju_recv(tju_tcp_t* sock, void *buffer, int len){
     return 0;
 }
 
-int tju_handle_packet(tju_tcp_t* sock, char* pkt){
-    uint32_t data_len = get_plen(pkt) - DEFAULT_HEADER_LEN;
-    // 这里要判断去处理三次握手和连接关闭的情况，这是不走缓冲区的过程
-
-    // 把收到的数据放到接受缓冲区
-    while(pthread_mutex_lock(&(sock->recv_lock)) != 0); // 加锁
-
-    if(sock->received_buf == NULL){
-        sock->received_buf = malloc(data_len);
-    }else {
-        sock->received_buf = realloc(sock->received_buf, sock->received_len + data_len);
-    }
-    memcpy(sock->received_buf + sock->received_len, pkt + DEFAULT_HEADER_LEN, data_len);
-    sock->received_len += data_len;
-
-    pthread_mutex_unlock(&(sock->recv_lock)); // 解锁
-
-
-    return 1;
-}
-
 // 关闭连接，向远程发送FIN pakcet，等待资源释放
 int tcp_close (tju_tcp_t* sock){
     // 首先应该检查接收队列中的缓冲区是否仍有剩余
@@ -249,13 +245,20 @@ int tcp_close (tju_tcp_t* sock){
     while(connect_sock != NULL) {}
 }
 
+/*
+====================================================
+===========以下为辅助函数的实现，仅在该模块被调用=========
+====================================================
+*/
+
+
 int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
     uint8_t flags = get_flags(pkt);
     // 通过socket状态进行处理
     switch (sock->state) {
         case CLOSED:
             // 关闭状态，不能接受任何消息
-            printf("closed state can't receive messages.\n");
+            printf("Closed state can't receive messages.\n");
             return -1;
         case LISTEN:
             // 判断packet flags 是否为 SYN_SENT 并判断ack的值
@@ -267,6 +270,9 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 tju_tcp_t* conn_sock = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
                 conn_sock->bind_addr.ip = conn_addr->ip;
                 conn_sock->bind_addr.port = conn_addr->port;
+
+                // 第一次收到消息，初始化接收窗口
+                tcp_update_expected_seq(sock, pkt);
 
                 // 修改服务端socket的状态
                 sock->state = SYN_SENT;
@@ -290,10 +296,14 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 return -1;
             }
         case SYN_SENT:
-            if (flags == ESTABLISHED) {
+            if (flags == ESTABLISHED && tcp_check_seq(pkt, sock)) {
                 // 第三次握手，服务端发送ACK报文， 服务端将自己的socket变为ESTABLISHED，
                 // 从syns_socks取出对应的socket并加入到accept_socks中
                 sock->state = ESTABLISHED;
+
+                // 更新expected_seq
+                tcp_update_expected_seq(sock, pkt);
+                
                 // 获取半连接队列的id
                 int index = sock->saved_syn;
                 // 获取半连接socket
@@ -319,8 +329,10 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
     switch(flags) {
         case SYN_RECV:
             if(sock->state == SYN_SENT) {
+                // client首次收到ACK， 更新窗口expected_seq
+                tcp_update_expected_seq(sock, pkt);
                 // 随便编的seq
-                int seq = get_seq(pkt) + 464;
+                int seq = get_seq(pkt) + 1;
                 int ack = get_seq(pkt) + 1;
                 // 头部长度
                 int len = 20;
@@ -469,6 +481,11 @@ void tcp_send_ack(tju_tcp_t* sock) {
         0
     );
     sendToLayer3(send_pkt, HEADER_LEN);
+}
+
+void tcp_update_expected_seq(tju_tcp_t* sock, tju_packet_t* pkt) {
+    int expected_seq = get_seq(pkt) + 1;
+    sock->window.wnd_recv->expect_seq = expected_seq;
 }
 
 

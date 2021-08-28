@@ -69,4 +69,5 @@ valgrind --tool=memcheck (--leak-check=full) {exectuable file}
 - RFC 1122
 - RFC 6298
 - [C-Thread-Pool](https://github.com/Pithikos/C-Thread-Pool)
+- [chan](https://github.com/tylertreat/chan)
 
