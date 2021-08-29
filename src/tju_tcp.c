@@ -465,8 +465,8 @@ void tcp_send_fin(tju_tcp_t* sock) {
 
 void tcp_send_ack(tju_tcp_t* sock) {
     // 瞎编seq和ack
-    uint32_t seq = 464;
-    uint32_t ack = 0;
+    uint32_t seq = sock->window.wnd_recv->expect_seq - 1;
+    uint32_t ack = seq;
     char* send_pkt = create_packet_buf(
         sock->established_local_addr.port,
         sock->established_remote_addr.port,

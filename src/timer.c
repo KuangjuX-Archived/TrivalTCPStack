@@ -18,6 +18,7 @@ void* tcp_check_timeout(void* arg) {
                 if(strcmp(signal, "interrupt")) {
                     tcp_ack_update_rtt(sock, time(NULL) - cur_time, 1);
                     chan_dispose(sock->rtt_timer->chan);
+                    sock->rtt_timer->chan = NULL;
                     return;
                 }
         }
@@ -74,11 +75,8 @@ int tcp_ack_update_rtt(tju_tcp_t* sock, float seq_rtt_us, float sack_rtt_us) {
 
 // 当计时器超时时的回调函数
 void tcp_write_timer_handler(tju_tcp_t* sock) {
-    if(!time_after(sock)) {
-        // 收到ack
-        return;
-    }
-
+    chan_dispose(sock->rtt_timer->chan);
+    sock->rtt_timer->chan = NULL;
     // 这里需要针对socket的状态进行不同的操作
     switch(sock->state) {
         case SYN_RECV:
@@ -111,7 +109,9 @@ void tcp_start_timer(tju_tcp_t* sock) {
 // 停止计时并返回ack所花费时间
 void tcp_stop_timer(tju_tcp_t* sock, float mtime) {
     char* data = "interrupt";
-    chan_send(sock->rtt_timer->chan, (void*)data);
+    if(sock->rtt_timer->chan != NULL) {
+        chan_send(sock->rtt_timer->chan, (void*)data);
+    }
 }
 
 
