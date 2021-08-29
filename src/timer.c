@@ -1,46 +1,29 @@
 #include "timer.h"
 
 
-
-void* __check__timeout(tju_tcp_t* sock) {
-    float timeout = sock->rtt_timer->timeout;
-    time_t cur_time = time(NULL);
-    time_t out_time = cur_time + timeout;
-    while(time(NULL) < out_time) {
-        // 检查信号量
-        if(TRUE) {
-            float mtime = time(NULL) - cur_time;
-            tcp_stop_timer(sock, mtime);
-            chan_send(sock->rtt_timer->chan, (void*)ACK_SIGNAL);
-        }
-    }
-    chan_send(sock->rtt_timer->chan, (void*)TIMEOUT_SIGNAL);
-}
-
 // 检查是否超时
-int time_after(tju_tcp_t* sock) {
+void* tcp_check_timeout(void* arg) {
     // 这里我们通过通道进行异步监测时钟，倘若计时器到时而没有收到ACK
     // 则通过channel发送对应的信号量， 倘若收到对应的ACK则返回对应的信号量
     // 通道的使用同golang channel.
-    sock->rtt_timer->chan = chan_init(0);
-    int signal;
-    pthread_t* thread;
-    pthread_create(&thread, NULL, __check__timeout, (void*)sock);
-
-    switch (chan_select(&sock->rtt_timer->chan, NULL, &signal, NULL, 0, NULL)) {
-        case 0:
-            if(signal == TIMEOUT_SIGNAL) {
-                // timeout
-                return 1;
-            }else if(signal == ACK_SIGNAL) {
-                // ack
-                return 0;
-            }
-        default:
-            printf("no received message.\n");
+    tju_tcp_t* sock = (tju_tcp_t*)arg;
+    float timeout = sock->rtt_timer->timeout;
+    time_t cur_time = time(NULL);
+    time_t out_time = cur_time + timeout;
+    char* signal = (char*)malloc(10);
+    while(time(NULL) < out_time) {
+        // 检查信号量
+        switch (chan_select(sock->rtt_timer->chan, NULL, &signal, NULL, 0, NULL)) {
+            case 0:
+                if(strcmp(signal, "interrupt")) {
+                    tcp_ack_update_rtt(sock, time(NULL) - cur_time, 1);
+                    chan_dispose(sock->rtt_timer->chan);
+                    return;
+                }
+        }
     }
-
-    chan_dispose(sock->rtt_timer->chan);
+    char* data = "timeout";
+    chan_send(sock->rtt_timer->chan, (void*)data);
 }
 
 void tcp_init_timer(
@@ -109,13 +92,26 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
 
 // 开始计时，即调用回调函数
 void tcp_start_timer(tju_tcp_t* sock) {
-    sock->rtt_timer->callback(sock);
+    // sock->rtt_timer->callback(sock);
+    pthread_t* thread;
+    sock->rtt_timer->chan = chan_init(0);
+    char* signal = (char*)malloc(10);
+    pthread_create(&thread, NULL, tcp_check_timeout, (void*)sock);
+    switch (chan_select(&sock->rtt_timer->chan, NULL, &signal, NULL, 0, NULL)) {
+        case 0:
+            if(strcmp(signal, "timeout")) {
+                // 超时，调用回调函数
+                sock->rtt_timer->callback(sock);
+            }
+        default:
+            printf("no activity.\n");
+    }
 }
 
 // 停止计时并返回ack所花费时间
 void tcp_stop_timer(tju_tcp_t* sock, float mtime) {
-    // TODO: 重置计时器
-    tcp_ack_update_rtt(sock, mtime, 1);
+    char* data = "interrupt";
+    chan_send(sock->rtt_timer->chan, (void*)data);
 }
 
 
