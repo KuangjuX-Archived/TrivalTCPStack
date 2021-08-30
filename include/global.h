@@ -145,6 +145,9 @@ typedef struct tju_tcp_t {
 	// 计时器逻辑
 	struct rtt_timer_t* rtt_timer;
 
+	// 超时次数
+	uint8_t timeout_counts;
+
 } tju_tcp_t;
 
 extern char* client_ip;
