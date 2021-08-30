@@ -17,6 +17,9 @@
 #define ACK_SIGNAL (0)
 #define TIMEOUT_SIGNAL (1)
 
+// 重传次数限制
+#define RETRANSMIT_LIMIT 10
+
 typedef struct rtt_timer_t {
     float estimated_rtt;
     float dev_rtt;
