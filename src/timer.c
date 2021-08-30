@@ -3,16 +3,17 @@
 
 // 检查是否超时
 void* tcp_check_timeout(void* arg) {
-    // 这里我们通过通道进行异步监测时钟，倘若计时器到时而没有收到ACK
-    // 则通过channel发送对应的信号量， 倘若收到对应的ACK则返回对应的信号量
-    // 通道的使用同golang channel.
+    // 这里我们异步监测是否超时，倘若超时则调用回调函数
+    // 否则监测到中断信号返回
     tju_tcp_t* sock = (tju_tcp_t*)arg;
     float timeout = sock->rtt_timer->timeout;
     time_t cur_time = time(NULL);
     time_t out_time = cur_time + timeout;
+    // 初始化信号量
     char* signal = (char*)malloc(10);
     while(time(NULL) < out_time) {
         // 检查信号量
+        // 注：select方法为非阻塞读取channel，以当没有读取到对应的数据，将会立刻向下执行
         switch (chan_select(sock->rtt_timer->chan, NULL, &signal, NULL, 0, NULL)) {
             case 0:
                 if(strcmp(signal, "interrupt")) {
@@ -23,8 +24,8 @@ void* tcp_check_timeout(void* arg) {
                 }
         }
     }
-    char* data = "timeout";
-    chan_send(sock->rtt_timer->chan, (void*)data);
+    // 此时超时，调用回调函数
+    sock->rtt_timer->callback(sock);
 }
 
 void tcp_init_timer(
@@ -83,6 +84,7 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
         case SYN_RECV:
             printf("transmit RST.\n");
         case ESTABLISHED: 
+            // 超时重传，这里或许需要判断一下重传的次数，若重传次数过多应该关闭连接
             tcp_retransmit_timer(sock);
         default:
             printf("Unresolved status.\n");
@@ -91,28 +93,20 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
 
 // 开始计时，创建新线程
 void tcp_start_timer(tju_tcp_t* sock) {
-    // sock->rtt_timer->callback(sock);
+    // 建立无缓冲区的channel
     sock->rtt_timer->chan = chan_init(0);
-    char* signal = (char*)malloc(10);
+    // 这里应当至今生成新线程，监视是否超时
     pthread_create(&sock->rtt_timer->timer_thread, NULL, tcp_check_timeout, (void*)sock);
-    switch (chan_select(&sock->rtt_timer->chan, NULL, &signal, NULL, 0, NULL)) {
-        case 0:
-            if(strcmp(signal, "timeout")) {
-                // 超时，调用回调函数
-                sock->rtt_timer->callback(sock);
-            }
-        default:
-            printf("no activity.\n");
-    }
 }
 
 // 停止计时并返回ack所花费时间
 void tcp_stop_timer(tju_tcp_t* sock, float mtime) {
     char* data = "interrupt";
     if(sock->rtt_timer->chan != NULL) {
+        // 发送中断信号
         chan_send(sock->rtt_timer->chan, (void*)data);
     }
-    // 等待进程结束
+    // 等待进程结束进行同步
     pthread_join(sock->rtt_timer->timer_thread, NULL);
 }
 
