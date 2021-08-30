@@ -40,6 +40,7 @@ void tcp_init_rtt(struct tju_tcp_t* sock) {
     sock->rtt_timer->estimated_rtt = 1;
     sock->rtt_timer->dev_rtt = 1;
     sock->rtt_timer->timeout = 1;
+    sock->rtt_timer->timer_thread = NULL;
 }
 
 void tcp_set_estimator(tju_tcp_t* sock, float mrtt_us) {
@@ -88,13 +89,12 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
     }
 }
 
-// 开始计时，即调用回调函数
+// 开始计时，创建新线程
 void tcp_start_timer(tju_tcp_t* sock) {
     // sock->rtt_timer->callback(sock);
-    pthread_t* thread;
     sock->rtt_timer->chan = chan_init(0);
     char* signal = (char*)malloc(10);
-    pthread_create(&thread, NULL, tcp_check_timeout, (void*)sock);
+    pthread_create(&sock->rtt_timer->timer_thread, NULL, tcp_check_timeout, (void*)sock);
     switch (chan_select(&sock->rtt_timer->chan, NULL, &signal, NULL, 0, NULL)) {
         case 0:
             if(strcmp(signal, "timeout")) {
@@ -112,6 +112,8 @@ void tcp_stop_timer(tju_tcp_t* sock, float mtime) {
     if(sock->rtt_timer->chan != NULL) {
         chan_send(sock->rtt_timer->chan, (void*)data);
     }
+    // 等待进程结束
+    pthread_join(sock->rtt_timer->timer_thread, NULL);
 }
 
 
