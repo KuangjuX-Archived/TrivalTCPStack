@@ -51,6 +51,12 @@ typedef struct {
 
 struct rtt_timer_t; 
 
+// typedef struct received_buf {
+// 	int capacity;
+// 	int size;
+// 	char* buf;
+// } received_buf;
+
 // TJU_TCP 结构体 保存TJU_TCP用到的各种数据
 typedef struct tju_tcp_t {
 	int state; // TCP的状态
