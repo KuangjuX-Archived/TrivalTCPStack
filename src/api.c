@@ -33,9 +33,19 @@ tju_tcp_t* tcp_socket(){
     // 初始化窗口
     sock->window.wnd_recv = (receiver_window_t*)malloc(sizeof(receiver_window_t));
     sock->window.wnd_send = (sender_window_t*)malloc(sizeof(sender_window_t));
+    sock->window.wnd_send->send_windows = (char*)malloc(TCP_SEND_WINDOW_SIZE);
+    sock->window.wnd_recv->receiver_window = (char*)malloc(TCP_RECV_WINDOW_SIZE);
 
     // 初始化定时器及回调函数
     tcp_init_timer(sock, tcp_write_timer_handler);
+
+    // 初始化send_buffer
+    sock->sending_capacity = 128 * 1024;
+    sock->sending_len = 0;
+    sock->sending_buf = (char*)malloc(sock->sending_capacity);
+
+    // 开启监测发送缓冲区线程
+    pthread_create(&sock->send_thread, NULL, tcp_send_stream, (void*)sock);
 
     return sock;
 }
@@ -175,26 +185,33 @@ int tcp_send(tju_tcp_t* sock, const void *buffer, int len){
     char* data = malloc(len);
     memcpy(data, buffer, len);
 
-    char* msg;
-    uint16_t plen = DEFAULT_HEADER_LEN + len;
-    uint32_t seq = sock->window.wnd_send->nextseq;
-    uint32_t base = sock->window.wnd_send->base;
-    uint16_t window_size = sock->window.wnd_send->window_size;
+    // 将packet加入到sending_buf中
+    // 获取锁
+    pthread_mutex_lock(&sock->send_lock);
+    if(sock->sending_len + len <= sock->sending_capacity) {
+        // 将packet按字节push到缓冲区中
+        char* ptr = sock->sending_buf + sock->sending_len;
+        memcpy(ptr, data, len);
+        sock->sending_len += len;
+    }else {
+        printf("Sending buffer is full.\n");
+        return -1;
+    }
+    // 释放锁
+    pthread_mutex_unlock(&sock->send_lock);
 
-    msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 
-              DEFAULT_HEADER_LEN, plen, NO_FLAG, 1, 0, data, len);
-    tju_packet_t* send_packet = buf_to_packet(msg);
-    if(seq < base + window_size) {
-        // sock->window.wnd_send->send_windows[seq % TCP_SEND_WINDOW_SIZE] = send_packet;
-        tju_packet_t* ptr = sock->window.wnd_send->send_windows + (seq % TCP_SEND_WINDOW_SIZE);
-        memcpy(ptr, send_packet, sizeof(tju_packet_t));
-        sendToLayer3(msg, plen);
-    }
-    if(base == seq) {
-        // 开始计时
-        tcp_start_timer(sock);
-    }
-    sock->window.wnd_send->nextseq += 1;
+    // tju_packet_t* send_packet = buf_to_packet(msg);
+    // if(seq < base + window_size) {
+    //     // sock->window.wnd_send->send_windows[seq % TCP_SEND_WINDOW_SIZE] = send_packet;
+    //     tju_packet_t* ptr = sock->window.wnd_send->send_windows + (seq % TCP_SEND_WINDOW_SIZE);
+    //     memcpy(ptr, send_packet, sizeof(tju_packet_t));
+    //     sendToLayer3(msg, plen);
+    // }
+    // if(base == seq) {
+    //     // 开始计时
+    //     tcp_start_timer(sock);
+    // }
+    // sock->window.wnd_send->nextseq += 1;
     
     return 0;
 }

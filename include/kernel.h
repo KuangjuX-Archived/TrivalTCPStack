@@ -1,10 +1,8 @@
 #ifndef _KERNEL_H_
 #define _KERNEL_H_
 
-// #include "tju_packet.h"
 #include <unistd.h>
 #include "tju_tcp.h"
-// #include "timer.h"
 
 void tcp_start_timer(tju_tcp_t* sock);
 void tcp_stop_timer(tju_tcp_t* sock);
@@ -38,7 +36,7 @@ static int onTCPPocket(char* pkt);
 以用户填写的TCP报文为参数
 根据用户填写的TCP的目的IP和目的端口,向该地址发送数据报
 */
-static void sendToLayer3(char* packet_buf, int packet_len);
+void sendToLayer3(char* packet_buf, int packet_len);
 
 
 /*
@@ -65,6 +63,6 @@ int BACKEND_UDPSOCKET_ID;
   还有一个协议字段
   不过由于本项目是TCP 协议都一样, 就没必要了)
 */
-static int cal_hash(uint32_t local_ip, uint16_t local_port, uint32_t remote_ip, uint16_t remote_port);
+int cal_hash(uint32_t local_ip, uint16_t local_port, uint32_t remote_ip, uint16_t remote_port);
 
 #endif

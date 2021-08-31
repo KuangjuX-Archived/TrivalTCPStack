@@ -18,7 +18,6 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
         uint32_t base = sock->window.wnd_send->base;
         uint32_t next_seq = sock->window.wnd_send->nextseq;
         if(base == next_seq) {
-            // TODO: 这里应当写收到ACK所需时间，还没想好怎么写
             tcp_stop_timer(sock);
         }else {
             tcp_start_timer(sock);

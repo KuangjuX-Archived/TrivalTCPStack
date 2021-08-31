@@ -1,4 +1,5 @@
 #include "timer.h"
+#include "kernel.h"
 
 // TODO: sock作为参数传入是否可以当作全局变量， 
 // 是否需要传入index从哈希表中获取
@@ -123,13 +124,26 @@ void tcp_stop_timer(tju_tcp_t* sock) {
 // 超时重传函数处理
 void tcp_retransmit_timer(tju_tcp_t* sock) {
     tcp_start_timer(sock);
-    int base = sock->window.wnd_send->base;
-    int next_seq = sock->window.wnd_send->nextseq;
-    for(int i = base; i < next_seq; i++) {
-        tju_packet_t pkt = sock->window.wnd_send->send_windows[i%TCP_SEND_WINDOW_SIZE];
-        char* buf = packet_to_buf(&pkt);
-        tcp_send(sock, buf, pkt.header.plen);
-    }
+    int base = sock->window.wnd_send->base % TCP_SEND_WINDOW_SIZE;
+    int next_seq = sock->window.wnd_send->nextseq % TCP_SEND_WINDOW_SIZE;
+    int len = next_seq - base;
+    // for(int i = base; i < next_seq; i++) {
+    //     tju_packet_t pkt = sock->window.wnd_send->send_windows[i%TCP_SEND_WINDOW_SIZE];
+    //     char* buf = packet_to_buf(&pkt);
+    //     tcp_send(sock, buf, pkt.header.plen);
+    // }
+    char* buf = (char*)malloc(next_seq - base);
+    memcpy(buf, sock->window.wnd_send->send_windows + base, len);
+
+    uint16_t plen = DEFAULT_HEADER_LEN + len;
+    uint32_t seq = sock->window.wnd_send->nextseq;
+    char* msg;
+    msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 
+              DEFAULT_HEADER_LEN, plen, NO_FLAG, 1, 0, buf, len);
+    
+    sendToLayer3(msg, plen);
+    
+
 }
 
 // 慢启动
