@@ -237,7 +237,7 @@ void tcp_send_fin(tju_tcp_t* sock) {
 
 void tcp_send_ack(tju_tcp_t* sock) {
     // 瞎编seq和ack
-    uint32_t seq = sock->window.wnd_recv->expect_seq - 1;
+    uint32_t seq = sock->window.wnd_recv->expect_seq;
     uint32_t ack = seq;
     char* send_pkt = create_packet_buf(
         sock->established_local_addr.port,
@@ -256,7 +256,7 @@ void tcp_send_ack(tju_tcp_t* sock) {
 }
 
 void tcp_update_expected_seq(tju_tcp_t* sock, char* pkt) {
-    int expected_seq = get_seq(pkt) + 1;
+    int expected_seq = get_seq(pkt) + get_plen(pkt);
     sock->window.wnd_recv->expect_seq = expected_seq;
 }
 
@@ -378,7 +378,7 @@ void* tcp_send_stream(void* arg) {
                 memcpy(ptr, buf, len);
                 char* msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 
                     DEFAULT_HEADER_LEN, plen, NO_FLAG, 1, 0, buf, len);
-                
+                printf("send data.\n");   
                 sendToLayer3(msg, plen);
             }
             if(base == seq) {

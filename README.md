@@ -45,7 +45,11 @@ execute `make server` in server container and execute `make client` in client co
 - [x] Thread Pool
 - [x] Channel
 - [x] Connection Management
-- [ ] System API: bind, listen, accept, recv, send
+- [x] Timer
+- [x] System API: bind, listen, accept, connect, recv, send, close
+- [x] Reliable Transmission
+- [ ] Flow Control
+- [ ] Congestion Control
 
 ## Differnes
 We use `10.0.0.3` as server's ip address instead of `10.0.0.1` because this address is reported occupied.

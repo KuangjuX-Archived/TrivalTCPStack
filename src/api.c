@@ -115,6 +115,7 @@ int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
         remote_addr.port
     );
     established_socks[hashval] = conn_sock;
+    conn_sock->window.wnd_recv->expect_seq = 0;
     printf("Connection established.\n");
 
     // status code: find a connect socket
@@ -182,6 +183,7 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
 }
 
 int tcp_send(tju_tcp_t* sock, const void *buffer, int len){
+    // printf("send data.\n");
     // 这里当然不能直接简单地调用sendToLayer3
     char* data = malloc(len);
     memcpy(data, buffer, len);
