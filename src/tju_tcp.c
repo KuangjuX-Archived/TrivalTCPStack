@@ -1,3 +1,5 @@
+#include <kernel.h>
+#include <pthread.h>
 #include "tju_tcp.h"
 #include "sockqueue.h"
 // #include "timer.h"
@@ -12,7 +14,7 @@
 
 extern sock_queue* syns_socks;
 extern sock_queue* accept_socks;
-extern tju_packet_t* connect_sock;
+extern tju_tcp_t* connect_sock;
 
 int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
     uint8_t flags = get_flags(pkt);
