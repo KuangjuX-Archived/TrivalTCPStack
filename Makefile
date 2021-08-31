@@ -14,7 +14,8 @@ OBJS = $(BUILD_DIR)/tju_packet.o \
 	   $(BUILD_DIR)/sockqueue.o \
 	   $(BUILD_DIR)/utils.o \
 	   $(BUILD_DIR)/queue.o \
-	   $(BUILD_DIR)/chan.o 
+	   $(BUILD_DIR)/chan.o \
+	   $(BUILD_DIR)/api.o
 
 
 

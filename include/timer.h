@@ -1,24 +1,10 @@
 #ifndef _TIMER_H_
 #define _TIMER_H_
 
-#include "kernel.h"
-#include "utils.h"
-#include "global.h"
 #include "chan.h"
+#include "tju_tcp.h"
+#include "consts.h"
 
-#define ALPHA (1/8)
-#define BETA (1/4)
-
-// clock granularities
-#define CLOCK_G (0.1)
-
-#define TCP_RTO_MAX (100)
-
-#define ACK_SIGNAL (0)
-#define TIMEOUT_SIGNAL (1)
-
-// 重传次数限制
-#define RETRANSMIT_LIMIT 10
 
 typedef struct rtt_timer_t {
     float estimated_rtt;

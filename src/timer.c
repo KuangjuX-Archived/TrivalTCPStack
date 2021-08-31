@@ -126,9 +126,9 @@ void tcp_retransmit_timer(tju_tcp_t* sock) {
     int base = sock->window.wnd_send->base;
     int next_seq = sock->window.wnd_send->nextseq;
     for(int i = base; i < next_seq; i++) {
-        tju_packet_t* pkt = sock->window.wnd_send->send_windows[i%TCP_SEND_WINDOW_SIZE];
-        char* buf = packet_to_buf(pkt);
-        tju_send(sock, buf, pkt->header.plen);
+        tju_packet_t pkt = sock->window.wnd_send->send_windows[i%TCP_SEND_WINDOW_SIZE];
+        char* buf = packet_to_buf(&pkt);
+        tcp_send(sock, buf, pkt.header.plen);
     }
 }
 

@@ -1,256 +1,18 @@
 #include "tju_tcp.h"
 #include "sockqueue.h"
-#include "timer.h"
+// #include "timer.h"
 
-/*
-=======================================================
-====================系统调用API函数如下===================
-=======================================================
-*/
-
-/*
-创建 TCP socket 
-初始化对应的结构体
-设置初始状态为 CLOSED
-*/
-tju_tcp_t* tju_socket(){
-    tju_tcp_t* sock = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
-    sock->state = CLOSED;
-    
-    pthread_mutex_init(&(sock->send_lock), NULL);
-    sock->sending_buf = NULL;
-    sock->sending_len = 0;
-
-    pthread_mutex_init(&(sock->recv_lock), NULL);
-    sock->received_buf = NULL;
-    sock->received_len = 0;
-    
-    if(pthread_cond_init(&sock->wait_cond, NULL) != 0){
-        perror("ERROR condition variable not set\n");
-        exit(-1);
-    }
-
-    // 初始化窗口
-    sock->window.wnd_recv = (receiver_window_t*)malloc(sizeof(receiver_window_t));
-    sock->window.wnd_send = (sender_window_t*)malloc(sizeof(sender_window_t));
-
-    // 初始化定时器及回调函数
-    tcp_init_timer(sock, tcp_write_timer_handler);
-
-    return sock;
-}
-
-/*
-绑定监听的地址 包括ip和端口
-*/
-int tju_bind(tju_tcp_t* sock, tju_sock_addr bind_addr) {
-    sock->bind_addr = bind_addr;
-    return 0;
-}
-
-/*
-被动打开 监听bind的地址和端口
-设置socket的状态为LISTEN
-注册该socket到内核的监听socket哈希表
-*/
-int tju_listen(tju_tcp_t* sock){
-    sock->state = LISTEN;
-    int hashval = cal_hash(sock->bind_addr.ip, sock->bind_addr.port, 0, 0);
-    listen_socks[hashval] = sock;
-    return 0;
-}
-
-/*
-接受连接 
-返回与客户端通信用的socket
-这里返回的socket一定是已经完成3次握手建立了连接的socket
-因为只要该函数返回, 用户就可以马上使用该socket进行send和recv
-accept API:
-int accept(int sockfd, struct sockaddr *restrict addr,
-        socklen_t *restrict addrlen);
-*/
-
-int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
-    memcpy(conn_sock, listen_sock, sizeof(tju_tcp_t));
-
-    // 如果全连接队列为空，则阻塞等待
-    printf("Wait connection......\n");
-    while(sockqueue_is_empty(accept_socks)){}
-
-    tju_sock_addr local_addr, remote_addr;
-    tju_tcp_t* sock = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
-    // 从全连接队列中取出第一个连接socket
-    int status = sockqueue_pop(accept_socks, sock);
-
-    if(status < 0) {
-        return -1;
-    }
-
-    // 为conn_sock更新信息
-    local_addr.ip = listen_sock->bind_addr.ip;
-    local_addr.port = listen_sock->bind_addr.port;
-    remote_addr.ip = sock->bind_addr.ip;
-    remote_addr.port = sock->bind_addr.port;
-
-    conn_sock->established_local_addr = local_addr;
-    conn_sock->established_remote_addr = remote_addr;
-    conn_sock->state = ESTABLISHED;
-
-    // 将客户端socket放入已建立连接的表中
-    int hashval = cal_hash(
-        local_addr.ip, 
-        local_addr.port, 
-        remote_addr.ip, 
-        remote_addr.port
-    );
-    established_socks[hashval] = conn_sock;
-    printf("Connection established.\n");
-
-    // status code: find a connect socket
-    return 0;
-}
-
-
-/*
-连接到服务端
-该函数以一个socket为参数
-调用函数前, 该socket还未建立连接
-函数正常返回后, 该socket一定是已经完成了3次握手, 建立了连接
-因为只要该函数返回, 用户就可以马上使用该socket进行send和recv
-*/
-int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
-    sock->established_remote_addr = target_addr;
-
-    tju_sock_addr local_addr;
-    local_addr.ip = inet_network("10.0.0.2");
-    local_addr.port = 5678; // 连接方进行connect连接的时候 内核中是随机分配一个可用的端口
-    sock->established_local_addr = local_addr;
-
-    // 修改socket的状态
-    sock->state = SYN_SENT;
-
-    // 将待连接socket储存起来
-    connect_sock = sock;
-
-    // 初始化ack和seq
-    uint32_t ack = 0;
-    uint32_t seq = 0;
-
-    // 创建客户端socket并将其加入到哈希表中
-    // 这里发送SYN_SENT packet向服务端发送请求
-    char* send_pkt = create_packet_buf(
-        local_addr.port,
-        target_addr.port,
-        seq,
-        ack,
-        HEADER_LEN,
-        HEADER_LEN,
-        SYN_SENT,
-        0,
-        0,
-        NULL,
-        0
-    );
-    sendToLayer3(send_pkt, HEADER_LEN);
-
-    // 这里阻塞直到socket的状态变为ESTABLISHED
-    printf("Wait connection......\n");
-    while(sock->state != ESTABLISHED){}
-
-    // 将连接后的socket放入哈希表中
-    int hashval = cal_hash(
-        local_addr.ip, 
-        local_addr.port, 
-        sock->established_remote_addr.ip, 
-        sock->established_remote_addr.port
-    );
-    established_socks[hashval] = sock;
-
-    printf("Client connect success.\n");
-    return 0;
-}
-
-int tju_send(tju_tcp_t* sock, const void *buffer, int len){
-    // 这里当然不能直接简单地调用sendToLayer3
-    char* data = malloc(len);
-    memcpy(data, buffer, len);
-
-    char* msg;
-    uint16_t plen = DEFAULT_HEADER_LEN + len;
-    uint32_t seq = sock->window.wnd_send->nextseq;
-    uint32_t base = sock->window.wnd_send->base;
-    uint16_t window_size = sock->window.wnd_send->window_size;
-
-    msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 
-              DEFAULT_HEADER_LEN, plen, NO_FLAG, 1, 0, data, len);
-    tju_packet_t* send_packet = buf_to_packet(msg);
-    if(seq < base + window_size) {
-        sock->window.wnd_send->send_windows[seq % TCP_SEND_WINDOW_SIZE] = send_packet;
-        sendToLayer3(msg, plen);
-    }
-    if(base == seq) {
-        // 开始计时
-        tcp_start_timer(sock);
-    }
-    sock->window.wnd_send->nextseq += 1;
-    
-    return 0;
-}
-
-int tju_recv(tju_tcp_t* sock, void *buffer, int len){
-    while(sock->received_len <= 0){
-        // 阻塞
-    }
-    while(pthread_mutex_lock(&(sock->recv_lock)) != 0); // 加锁
-
-    int read_len = 0;
-    if (sock->received_len >= len){ // 从中读取len长度的数据
-        read_len = len;
-    }else{
-        read_len = sock->received_len; // 读取sock->received_len长度的数据(全读出来)
-    }
-
-    memcpy(buffer, sock->received_buf, read_len);
-
-    if(read_len < sock->received_len) { // 还剩下一些
-        char* new_buf = malloc(sock->received_len - read_len);
-        memcpy(new_buf, sock->received_buf + read_len, sock->received_len - read_len);
-        free(sock->received_buf);
-        sock->received_len -= read_len;
-        sock->received_buf = new_buf;
-    }else{
-        free(sock->received_buf);
-        sock->received_buf = NULL;
-        sock->received_len = 0;
-    }
-    pthread_mutex_unlock(&(sock->recv_lock)); // 解锁
-
-    return 0;
-}
-
-// 关闭连接，向远程发送FIN pakcet，等待资源释放
-int tcp_close (tju_tcp_t* sock){
-    // 首先应该检查接收队列中的缓冲区是否仍有剩余
-    while(sock->received_buf != NULL) {
-        // 若仍有剩余则清空
-        free(sock->received_buf);
-        sock->received_len = 0;
-        sock->received_buf = NULL;
-    }
-    // 修改当前状态
-    sock->state = FIN_WAIT_1;
-    // 发送FIN分组
-    tcp_send_fin(sock);
-    // 这里暂时只检查客户端的状态
-    while(connect_sock != NULL) {}
-}
-
+// void tcp_start_timer(tju_tcp_t* sock);
+// void tcp_stop_timer(tju_tcp_t* sock);
 /*
 ====================================================
 ===========以下为辅助函数的实现，仅在该模块被调用=========
 ====================================================
 */
 
+extern sock_queue* syns_socks;
+extern sock_queue* accept_socks;
+extern tju_packet_t* connect_sock;
 
 int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
     uint8_t flags = get_flags(pkt);
@@ -487,6 +249,77 @@ void tcp_update_expected_seq(tju_tcp_t* sock, tju_packet_t* pkt) {
     int expected_seq = get_seq(pkt) + 1;
     sock->window.wnd_recv->expect_seq = expected_seq;
 }
+
+/*
+=================================================
+====================检验和========================
+=================================================
+*/
+
+int tcp_check(tju_packet_t* pkt) {
+    unsigned short cksum = tcp_compute_checksum(pkt);
+    if(pkt->header.checksum != cksum) {
+        printf("checksum error.\n");
+        return FALSE;
+    }
+    // 这里也需要去检查ack
+
+    return TRUE;
+}
+
+// 检查序列号，此时需要区分发送方和接收方。
+int tcp_check_seq(tju_packet_t* pkt, tju_tcp_t* sock) {
+    // 首先查看收到的是不是ACK，若是ACK则查看seqnum是否正确，否则是
+    // 传输的分组，直接放入队列中。
+    if(get_flags(pkt) == ACK) {
+        // 发送方收到ACK
+        if(get_ack(pkt) == sock->window.wnd_recv->expect_seq) {
+            return 0;
+        }else {
+            return -1;
+        }
+    }else {
+        // 接收方收到发送方发送来的pakcet，此时应当检查发送来的ack是否与expected_seq一致
+        // 一致则将其放入缓冲区中，否则丢弃或者存起来
+        if(get_seq(pkt) == sock->window.wnd_recv->expect_seq) {
+            
+        }
+    }
+}
+
+static unsigned short tcp_compute_checksum(tju_packet_t* pkt) {
+    unsigned short cksum = 0;
+    cksum += (pkt->header.source_port >> 16) & 0xFFFF;
+    cksum += (pkt->header.source_port & 0xFFFF);
+
+    cksum += (pkt->header.destination_port >> 16) & 0xFFFF;
+    cksum += (pkt->header.destination_port & 0xFFFF);
+
+    cksum += pkt->header.seq_num;
+    cksum += pkt->header.ack_num;
+    cksum += htons(pkt->header.hlen);
+    cksum += htons(pkt->header.plen);
+    cksum += pkt->header.flags;
+    cksum += pkt->header.advertised_window;
+    cksum += pkt->header.ext;
+
+    int data_len = pkt->header.plen - pkt->header.hlen;
+    // char* data = pkt->data;
+    // while(data_len > 0) {
+    //     cksum += *data;
+    //     data += 1;
+    //     data_len -= sizeof(char);
+    // }
+    cksum = (cksum >> 16) + (cksum & 0xFFFF);
+    cksum = ~cksum;
+    return (unsigned short)cksum;
+}
+
+void set_checksum(tju_packet_t* pkt) {
+    unsigned short cksum = tcp_compute_checksum(pkt);
+    pkt->header.checksum = cksum;
+}
+
 
 
 void load_data_to_sending_window(tju_tcp_t *sock, const void *buffer, int len) {
