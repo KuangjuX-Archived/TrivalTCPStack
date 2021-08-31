@@ -318,12 +318,12 @@ static unsigned short tcp_compute_checksum(tju_packet_t* pkt) {
     cksum += pkt->header.ext;
 
     int data_len = pkt->header.plen - pkt->header.hlen;
-    // char* data = pkt->data;
-    // while(data_len > 0) {
-    //     cksum += *data;
-    //     data += 1;
-    //     data_len -= sizeof(char);
-    // }
+    char* data = pkt->data;
+    while(data_len > 0) {
+        cksum += *data;
+        data += 1;
+        data_len -= sizeof(char);
+    }
     cksum = (cksum >> 16) + (cksum & 0xFFFF);
     cksum = ~cksum;
     return (unsigned short)cksum;
@@ -348,6 +348,11 @@ void* tcp_send_stream(void* arg) {
             int window_left = sock->window.wnd_send->window_size 
             - (sock->window.wnd_send->nextseq - sock->window.wnd_send->base);
             int len = min(sock->sending_len, window_left);
+            // printf("base: %d.\n", sock->window.wnd_send->base);
+            // printf("next_seq: %d.\n", sock->window.wnd_send->nextseq);
+            // printf("windows size : %d.\n", sock->window.wnd_send->send_windows);
+            // printf("sending len: %d.\n", sock->sending_len);
+            // printf("data len: %d.\n", len);
 
             char* buf = (char*)malloc(len);
             memcpy(buf, sock->sending_buf, len);
@@ -373,7 +378,8 @@ void* tcp_send_stream(void* arg) {
                 memcpy(ptr, buf, len);
                 char* msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 
                     DEFAULT_HEADER_LEN, plen, NO_FLAG, 1, 0, buf, len);
-                sendToLayer3(buf, plen);
+                
+                sendToLayer3(msg, plen);
             }
             if(base == seq) {
                 // 开始计时

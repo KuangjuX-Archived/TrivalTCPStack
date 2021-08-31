@@ -35,6 +35,7 @@ tju_tcp_t* tcp_socket(){
     sock->window.wnd_send = (sender_window_t*)malloc(sizeof(sender_window_t));
     sock->window.wnd_send->send_windows = (char*)malloc(TCP_SEND_WINDOW_SIZE);
     sock->window.wnd_recv->receiver_window = (char*)malloc(TCP_RECV_WINDOW_SIZE);
+    sock->window.wnd_send->window_size = TCP_SEND_WINDOW_SIZE;
 
     // 初始化定时器及回调函数
     tcp_init_timer(sock, tcp_write_timer_handler);
