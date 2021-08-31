@@ -1,7 +1,6 @@
 #ifndef _KERNEL_H_
 #define _KERNEL_H_
 
-#include "global.h"
 // #include "tju_packet.h"
 #include <unistd.h>
 #include "tju_tcp.h"
