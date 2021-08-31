@@ -1,58 +1,92 @@
 #ifndef _TJU_TCP_H_
 #define _TJU_TCP_H_
 
-#include "global.h"
+// #include "global.h"
+
 #include "tju_packet.h"
-#include "kernel.h"
+// #include "kernel.h"
+#include "consts.h"
+
+// TCP 发送窗口
+// 注释的内容如果想用就可以用 不想用就删掉 仅仅提供思路和灵感
+typedef struct {
+	tju_packet_t send_windows[TCP_SEND_WINDOW_SIZE];
+	uint16_t window_size;
+  	uint32_t base;
+    uint32_t nextseq;
+//   uint32_t estmated_rtt;
+    int ack_cnt;
+    pthread_mutex_t ack_cnt_lock;
+//   struct timeval send_time;
+//   struct timeval timeout;
+    uint16_t rwnd; 
+//   int congestion_status;
+//   uint16_t cwnd; 
+//   uint16_t ssthresh; 
+} sender_window_t;
+
+// TCP 接受窗口
+// 注释的内容如果想用就可以用 不想用就删掉 仅仅提供思路和灵感
+// 发现窗口用字节数描述太难实现了，暂时使用packet来代替
+typedef struct {
+	tju_packet_t received[TCP_RECV_WINDOW_SIZE];
+
+    //  received_packet_t* head;
+    char buf[TCP_RECVWN_SIZE];
+    uint8_t marked[TCP_RECVWN_SIZE];
+    uint32_t expect_seq;
+} receiver_window_t;
+
+// TCP 窗口 每个建立了连接的TCP都包括发送和接受两个窗口
+typedef struct {
+	sender_window_t* wnd_send;
+  	receiver_window_t* wnd_recv;
+} window_t;
+
+typedef struct {
+	uint32_t ip;
+	uint16_t port;
+} tju_sock_addr;
 
 
-/*
-创建 TCP socket 
-初始化对应的结构体
-设置初始状态为 CLOSED
-*/
-tju_tcp_t* tju_socket();
+struct rtt_timer_t; 
 
-/*
-绑定监听的地址 包括ip和端口
-*/
-int tju_bind(tju_tcp_t* sock, tju_sock_addr bind_addr);
+// typedef struct received_buf {
+// 	int capacity;
+// 	int size;
+// 	char* buf;
+// } received_buf;
 
-/*
-被动打开 监听bind的地址和端口
-设置socket的状态为LISTEN
-*/
-int tju_listen(tju_tcp_t* sock);
+// TJU_TCP 结构体 保存TJU_TCP用到的各种数据
+typedef struct tju_tcp_t {
+	int state; // TCP的状态
 
-/*
-接受连接 
-返回与客户端通信用的socket
-这里返回的socket一定是已经完成3次握手建立了连接的socket
-因为只要该函数返回, 用户就可以马上使用该socket进行send和recv
-*/
-// tju_tcp_t* tju_accept(tju_tcp_t* sock);
-int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock);
+	tju_sock_addr bind_addr; // 存放bind和listen时该socket绑定的IP和端口
+	tju_sock_addr established_local_addr; // 存放建立连接后 本机的 IP和端口
+	tju_sock_addr established_remote_addr; // 存放建立连接后 连接对方的 IP和端口
 
+	pthread_mutex_t send_lock; // 发送数据锁
+	char* sending_buf; // 发送数据缓存区
+	int sending_len; // 发送数据缓存长度
+	int sending_item_flag[MAX_SENDING_ITEM_NUM];
 
-/*
-连接到服务端
-该函数以一个socket为参数
-调用函数前, 该socket还未建立连接
-函数正常返回后, 该socket一定是已经完成了3次握手, 建立了连接
-因为只要该函数返回, 用户就可以马上使用该socket进行send和recv
-*/
-// int tju_connect(tju_tcp_t* sock, tju_sock_addr target_addr);
-int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr);
+	pthread_mutex_t recv_lock; // 接收数据锁
+	char* received_buf; // 接收数据缓存区
+	int received_len; // 接收数据缓存长度
 
+	pthread_cond_t wait_cond; // 可以被用来唤醒recv函数调用时等待的线程
 
-int tju_send (tju_tcp_t* sock, const void *buffer, int len);
-int tju_recv (tju_tcp_t* sock, void *buffer, int len);
+	window_t window; // 发送和接受窗口
 
-/*
-关闭一个TCP连接
-这里涉及到四次挥手
-*/
-int tcp_close (tju_tcp_t* sock);
+	int saved_syn;
+
+	// 计时器逻辑
+	struct rtt_timer_t* rtt_timer;
+
+	// 超时次数
+	uint8_t timeout_counts;
+
+} tju_tcp_t;
 
 // 服务端状态处理
 int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr);
@@ -69,7 +103,29 @@ void tcp_send_ack(tju_tcp_t* sock);
 
 void tcp_update_expected_seq(tju_tcp_t* tcp, tju_packet_t* pkt);
 
+/*
+================================================
+===================检验和========================
+================================================
+*/
 
+// 设置checksum
+void set_checksum(tju_packet_t* pkt);
+
+int tcp_check(tju_packet_t* pkt);
+
+int tcp_check_seq(tju_packet_t* pkt, tju_tcp_t* sock);
+
+// 计算checksum
+static unsigned short tcp_compute_checksum(tju_packet_t* pkt);
+
+void set_checksum(tju_packet_t* pkt);
+
+/*
+===================================================
+=======================流量控制======================
+===================================================
+*/
 int handle_improved_window();
 
 void load_data_to_sending_window(tju_tcp_t *sock, const void *pVoid, int len);

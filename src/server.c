@@ -1,5 +1,6 @@
-#include "tju_tcp.h"
+#include "api.h"
 #include "thpool.h"
+#include "kernel.h"
 #include <string.h>
 
 #define QUEUES 16
@@ -11,9 +12,9 @@ void echo(void* client) {
     printf("Start receive client message.\n");
     while (TRUE) {
         char buf[512];
-        tju_recv(socket, (void*)buf, 512);
+        tcp_recv(socket, (void*)buf, 512);
         printf("%s\n", buf);
-        tju_send(socket, (void*)buf, 512);
+        tcp_send(socket, (void*)buf, 512);
     }
 }
 
@@ -23,7 +24,7 @@ int main(int argc, char **argv) {
     startSimulation();
 
     printf("create server socket.\n");
-    tju_tcp_t* my_server = tju_socket();
+    tju_tcp_t* my_server = tcp_socket();
     
     tju_sock_addr bind_addr;
     bind_addr.ip = inet_network("10.0.0.3");
@@ -31,11 +32,11 @@ int main(int argc, char **argv) {
 
     // bind server ip
     printf("bind server address.\n");
-    tju_bind(my_server, bind_addr);
+    tcp_bind(my_server, bind_addr);
 
     // listen server
     printf("listen server address.\n");
-    tju_listen(my_server);
+    tcp_listen(my_server);
 
     printf("Try to accept client.\n");
     tju_tcp_t* conn_sock;
@@ -46,13 +47,13 @@ int main(int argc, char **argv) {
     }
 
     char buf[512];
-    tju_recv(conn_sock, (void*)buf, 12);
+    tcp_recv(conn_sock, (void*)buf, 12);
     printf("%s\n", buf);
-    tju_send(conn_sock, (void*)buf, 12);
+    tcp_send(conn_sock, (void*)buf, 12);
 
-    tju_recv(conn_sock, (void*)buf, 10);
+    tcp_recv(conn_sock, (void*)buf, 10);
     printf("%s\n", buf);
-    tju_send(conn_sock, (void*)buf, 10);
+    tcp_send(conn_sock, (void*)buf, 10);
     while(TRUE){}
 
     return EXIT_SUCCESS;

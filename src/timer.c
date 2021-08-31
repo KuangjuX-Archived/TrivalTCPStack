@@ -88,7 +88,13 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
             printf("transmit RST.\n");
         case ESTABLISHED: 
             // 超时重传，这里或许需要判断一下重传的次数，若重传次数过多应该关闭连接
-            tcp_retransmit_timer(sock);
+            if(sock->timeout_counts > RETRANSMIT_LIMIT) {
+                // 重传次数超限，关闭连接
+                tcp_outlimit_retransmit(sock);
+            }else {
+                // 重传分组
+                tcp_retransmit_timer(sock);
+            }
         default:
             printf("Unresolved status.\n");
     }
@@ -115,11 +121,15 @@ void tcp_stop_timer(tju_tcp_t* sock) {
 
 
 // 超时重传函数处理
-// 检查当前socket状态
-// 检查是否超出了重传次数
-// 进入LOSS状态，开始慢启动
 void tcp_retransmit_timer(tju_tcp_t* sock) {
-
+    tcp_start_timer(sock);
+    int base = sock->window.wnd_send->base;
+    int next_seq = sock->window.wnd_send->nextseq;
+    for(int i = base; i < next_seq; i++) {
+        tju_packet_t pkt = sock->window.wnd_send->send_windows[i%TCP_SEND_WINDOW_SIZE];
+        char* buf = packet_to_buf(&pkt);
+        tcp_send(sock, buf, pkt.header.plen);
+    }
 }
 
 // 慢启动

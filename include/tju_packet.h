@@ -11,15 +11,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-#include "global.h"
+#include "consts.h"
 
 
-#define DEFAULT_HEADER_LEN (sizeof(tju_header_t))
-#define SYN_FLAG_MASK 0x8
-#define ACK_FLAG_MASK 0x4
-#define FIN_FLAG_MASK 0x2
-
-#define HEADER_LEN (sizeof(tju_header_t))
 
 // TCP 报文 header部分 的结构定义
 typedef struct {
@@ -43,15 +37,6 @@ typedef struct {
 } tju_packet_t;
 
 
-// 设置checksum
-void set_checksum(tju_packet_t* pkt);
-
-int tcp_check(tju_packet_t* pkt);
-
-int tcp_check_seq(tju_packet_t* pkt, tju_tcp_t* sock);
-
-// 计算checksum
-static unsigned short tcp_compute_checksum(tju_packet_t* pkt);
 
 /*
  输入header所有字段 和 TCP包数据内容及其长度
