@@ -18,11 +18,11 @@ tju_tcp_t* tcp_socket(){
     sock->state = CLOSED;
     
     pthread_mutex_init(&(sock->send_lock), NULL);
-    sock->sending_buf = NULL;
+    sock->sending_buf = malloc(TCP_SEND_BUFFER_SIZE);
     sock->sending_len = 0;
 
     pthread_mutex_init(&(sock->recv_lock), NULL);
-    sock->received_buf = NULL;
+    sock->received_buf = malloc(TCP_RECV_BUFFER_SIZE);
     sock->received_len = 0;
     
     if(pthread_cond_init(&sock->wait_cond, NULL) != 0){
@@ -215,14 +215,9 @@ int tcp_recv(tju_tcp_t* sock, void *buffer, int len){
     memcpy(buffer, sock->received_buf, read_len);
 
     if(read_len < sock->received_len) { // 还剩下一些
-        char* new_buf = malloc(sock->received_len - read_len);
-        memcpy(new_buf, sock->received_buf + read_len, sock->received_len - read_len);
-        free(sock->received_buf);
+        memcpy(sock->received_buf,sock->received_buf+read_len,sock->received_len-read_len);
         sock->received_len -= read_len;
-        sock->received_buf = new_buf;
     }else{
-        free(sock->received_buf);
-        sock->received_buf = NULL;
         sock->received_len = 0;
     }
     pthread_mutex_unlock(&(sock->recv_lock)); // 解锁
