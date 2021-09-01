@@ -1,4 +1,8 @@
 #include "kernel.h"
+#include "sockqueue.h"
+#include <pthread.h>
+#include <unistd.h>
+#include <arpa/inet.h>
 
 /*
 ==========================================================
@@ -46,7 +50,9 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
             // 向对方发送ACK
             // 修改自己的expected_seq
             tcp_send_ack(sock);
-            sock->window.wnd_recv->expect_seq += 1;
+            // sock->window.wnd_recv->expect_seq += 1;
+            // 更新expected_seq
+            sock->window.wnd_recv->expect_seq += get_plen(pkt);
             // 继续执行，接受数据
         }else if(seq < expected_seq) {
         }

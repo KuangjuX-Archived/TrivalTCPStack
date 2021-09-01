@@ -46,7 +46,7 @@ tju_tcp_t* tcp_socket(){
     sock->sending_buf = (char*)malloc(sock->sending_capacity);
 
     // 开启监测发送缓冲区线程
-    pthread_create(&sock->send_thread, NULL, tcp_send_stream, (void*)sock);
+    // pthread_create(&sock->send_thread, NULL, tcp_send_stream, (void*)sock);
 
     return sock;
 }
@@ -116,6 +116,7 @@ int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
     );
     established_socks[hashval] = conn_sock;
     conn_sock->window.wnd_recv->expect_seq = 0;
+    pthread_create(&conn_sock->send_thread, NULL, tcp_send_stream, (void*)conn_sock);
     printf("Connection established.\n");
 
     // status code: find a connect socket
@@ -168,6 +169,7 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
     // 这里阻塞直到socket的状态变为ESTABLISHED
     printf("Wait connection......\n");
     while(sock->state != ESTABLISHED){}
+    pthread_create(&sock->send_thread, NULL, tcp_send_stream, (void*)sock);
 
     // 将连接后的socket放入哈希表中
     int hashval = cal_hash(
@@ -183,7 +185,6 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
 }
 
 int tcp_send(tju_tcp_t* sock, const void *buffer, int len){
-    // printf("send data.\n");
     // 这里当然不能直接简单地调用sendToLayer3
     char* data = malloc(len);
     memcpy(data, buffer, len);

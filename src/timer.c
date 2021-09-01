@@ -1,5 +1,7 @@
 #include "timer.h"
 #include "kernel.h"
+#include "chan.h"
+#include "utils.h"
 
 // TODO: sock作为参数传入是否可以当作全局变量， 
 // 是否需要传入index从哈希表中获取
@@ -24,7 +26,7 @@ void* tcp_check_timeout(void* arg) {
                     // 销毁channel
                     chan_dispose(sock->rtt_timer->chan);
                     sock->rtt_timer->chan = NULL;
-                    return;
+                    return NULL;
                 }
         }
     }
@@ -45,7 +47,7 @@ void tcp_init_rtt(struct tju_tcp_t* sock) {
     sock->rtt_timer->estimated_rtt = 1;
     sock->rtt_timer->dev_rtt = 1;
     sock->rtt_timer->timeout = 1000;
-    sock->rtt_timer->timer_thread = NULL;
+    sock->rtt_timer->timer_thread = 0;
 }
 
 void tcp_set_estimator(tju_tcp_t* sock, float mrtt_us) {

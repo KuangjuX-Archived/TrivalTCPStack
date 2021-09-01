@@ -26,5 +26,6 @@ void tcp_start_timer(tju_tcp_t* sock);
 void tcp_stop_timer(tju_tcp_t* sock);
 
 void tcp_write_timer_handler(tju_tcp_t* sock);
+void tcp_outlimit_retransmit(tju_tcp_t* sock);
 
 #endif

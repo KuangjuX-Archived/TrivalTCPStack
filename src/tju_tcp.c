@@ -216,8 +216,8 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
 void tcp_send_fin(tju_tcp_t* sock) {
     char* send_pkt;
     // 瞎编seq和ack
-    int seq = 464;
-    int ack = 0;
+    int seq = sock->window.wnd_recv->expect_seq;
+    int ack = seq;
     int flags = ACK | FIN;
     send_pkt = create_packet_buf(
         sock->established_local_addr.port,
@@ -387,6 +387,7 @@ void* tcp_send_stream(void* arg) {
             }
             // 更新nextseq的值
             sock->window.wnd_send->nextseq += len;
+            // 更新接受窗口的值
         }
     }
 }
