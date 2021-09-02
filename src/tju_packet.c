@@ -1,6 +1,6 @@
 #include "tju_packet.h"
 
-
+void set_checksum(tju_packet_t* pkt);
 /*
  输入header所有字段 和 TCP包数据内容及其长度
  构造tju_packet_t

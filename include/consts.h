@@ -46,16 +46,12 @@
 #define FAST_RECOVERY 2
 
 // TCP 接受窗口大小
-#define TCP_RECVWN_SIZE 32*MAX_DLEN // 比如最多放32个满载数据包
-#define TCP_RECV_WINDOW_SIZE 32
+#define TCP_RECVWN_SIZE 32 * MAX_DLEN // 比如最多放32个满载数据包
+#define TCP_RECV_WINDOW_SIZE 128 * MAX_DLEN
 
 // TCP 发送缓存窗口大小
-#define TCP_SEND_WINDOW_SIZE 128
+#define TCP_SEND_WINDOW_SIZE 128 * MAX_DLEN
 #define MAX_SENDING_ITEM_NUM 1024 //最大file数
-
-// TCP send/recv buffer size
-#define TCP_SEND_BUFFER_SIZE 8*1024*1024 //5MB
-#define TCP_RECV_BUFFER_SIZE 8*1024*1024 //5MB
 
 // TCP改进窗口算法的阈值
 #define IMPROVED_WINDOW_THRESHOLD 0.25
