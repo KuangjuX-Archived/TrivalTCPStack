@@ -2,6 +2,8 @@
 #include "timer.h"
 #include "kernel.h"
 #include "sockqueue.h"
+
+void* tcp_send_stream(void* arg);
 /*
 =======================================================
 ====================系统调用API函数如下===================
@@ -17,12 +19,12 @@ tju_tcp_t* tcp_socket(){
     tju_tcp_t* sock = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
     sock->state = CLOSED;
     
-    pthread_mutex_init(&(sock->send_lock), NULL);
+    pthread_mutex_init(&sock->send_lock, NULL);
     sock->sending_buf = (char*)malloc(TCP_SEND_BUFFER_SIZE);
     sock->sending_len = 0;
     sock->sending_capacity = TCP_SEND_BUFFER_SIZE;
 
-    pthread_mutex_init(&(sock->recv_lock), NULL);
+    pthread_mutex_init(&sock->recv_lock, NULL);
     sock->received_buf = (char*)malloc(TCP_RECV_BUFFER_SIZE);
     sock->received_len = 0;
     
