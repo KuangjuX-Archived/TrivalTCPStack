@@ -391,6 +391,9 @@ void* tcp_send_stream(void* arg) {
             // 更新nextseq的值
             sock->window.wnd_send->nextseq += len;
             // 更新接受窗口的值
+        }else {
+            // 休息，防止发送线程不断轮询造成CPU负载过重
+            sleep(1);
         }
     }
 }
