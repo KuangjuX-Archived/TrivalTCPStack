@@ -2,10 +2,14 @@
 #include <pthread.h>
 #include "tju_tcp.h"
 #include "sockqueue.h"
-// #include "timer.h"
+#include "utils.h"
+#include <pthread.h>
 
-// void tcp_start_timer(tju_tcp_t* sock);
-// void tcp_stop_timer(tju_tcp_t* sock);
+void sendToLayer3(char* packet_buf, int packet_len);
+int cal_hash(uint32_t local_ip, uint16_t local_port, uint32_t remote_ip, uint16_t remote_port);
+
+void tcp_start_timer(tju_tcp_t* sock);
+void tcp_stop_timer(tju_tcp_t* sock);
 /*
 ====================================================
 ===========以下为辅助函数的实现，仅在该模块被调用=========
@@ -15,6 +19,13 @@
 extern sock_queue* syns_socks;
 extern sock_queue* accept_socks;
 extern tju_tcp_t* connect_sock;
+
+
+/*
+======================================================
+=======================连接管理========================
+======================================================
+*/
 
 int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
     uint8_t flags = get_flags(pkt);
@@ -60,7 +71,7 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 return -1;
             }
         case SYN_SENT:
-            if (flags == ESTABLISHED && tcp_check_seq(pkt, sock)) {
+            if (flags == ESTABLISHED) {
                 // 第三次握手，服务端发送ACK报文， 服务端将自己的socket变为ESTABLISHED，
                 // 从syns_socks取出对应的socket并加入到accept_socks中
                 sock->state = ESTABLISHED;
@@ -208,8 +219,8 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
 void tcp_send_fin(tju_tcp_t* sock) {
     char* send_pkt;
     // 瞎编seq和ack
-    int seq = 464;
-    int ack = 0;
+    int seq = sock->window.wnd_recv->expect_seq;
+    int ack = seq;
     int flags = ACK | FIN;
     send_pkt = create_packet_buf(
         sock->established_local_addr.port,
@@ -229,7 +240,7 @@ void tcp_send_fin(tju_tcp_t* sock) {
 
 void tcp_send_ack(tju_tcp_t* sock) {
     // 瞎编seq和ack
-    uint32_t seq = sock->window.wnd_recv->expect_seq - 1;
+    uint32_t seq = sock->window.wnd_recv->expect_seq;
     uint32_t ack = seq;
     char* send_pkt = create_packet_buf(
         sock->established_local_addr.port,
@@ -247,16 +258,20 @@ void tcp_send_ack(tju_tcp_t* sock) {
     sendToLayer3(send_pkt, HEADER_LEN);
 }
 
-void tcp_update_expected_seq(tju_tcp_t* sock, tju_packet_t* pkt) {
-    int expected_seq = get_seq(pkt) + 1;
+void tcp_update_expected_seq(tju_tcp_t* sock, char* pkt) {
+    int expected_seq = get_seq(pkt) + get_plen(pkt);
     sock->window.wnd_recv->expect_seq = expected_seq;
 }
 
 /*
 =================================================
-====================检验和========================
+====================可靠传输========================
 =================================================
 */
+
+/**
+ * 检验和
+ **/
 
 int tcp_check(tju_packet_t* pkt) {
     unsigned short cksum = tcp_compute_checksum(pkt);
@@ -273,9 +288,9 @@ int tcp_check(tju_packet_t* pkt) {
 int tcp_check_seq(tju_packet_t* pkt, tju_tcp_t* sock) {
     // 首先查看收到的是不是ACK，若是ACK则查看seqnum是否正确，否则是
     // 传输的分组，直接放入队列中。
-    if(get_flags(pkt) == ACK) {
+    if(pkt->header.flags == ACK) {
         // 发送方收到ACK
-        if(get_ack(pkt) == sock->window.wnd_recv->expect_seq) {
+        if(pkt->header.seq_num == sock->window.wnd_recv->expect_seq) {
             return 0;
         }else {
             return -1;
@@ -283,7 +298,7 @@ int tcp_check_seq(tju_packet_t* pkt, tju_tcp_t* sock) {
     }else {
         // 接收方收到发送方发送来的pakcet，此时应当检查发送来的ack是否与expected_seq一致
         // 一致则将其放入缓冲区中，否则丢弃或者存起来
-        if(get_seq(pkt) == sock->window.wnd_recv->expect_seq) {
+        if(pkt->header.seq_num == sock->window.wnd_recv->expect_seq) {
             
         }
     }
@@ -306,12 +321,12 @@ static unsigned short tcp_compute_checksum(tju_packet_t* pkt) {
     cksum += pkt->header.ext;
 
     int data_len = pkt->header.plen - pkt->header.hlen;
-    // char* data = pkt->data;
-    // while(data_len > 0) {
-    //     cksum += *data;
-    //     data += 1;
-    //     data_len -= sizeof(char);
-    // }
+    char* data = pkt->data;
+    while(data_len > 0) {
+        cksum += *data;
+        data += 1;
+        data_len -= sizeof(char);
+    }
     cksum = (cksum >> 16) + (cksum & 0xFFFF);
     cksum = ~cksum;
     return (unsigned short)cksum;
@@ -322,7 +337,70 @@ void set_checksum(tju_packet_t* pkt) {
     pkt->header.checksum = cksum;
 }
 
+/**
+ * GBN
+ **/
 
+// 通过GBN将发送缓冲区的内容发送给下层协议
+void* tcp_send_stream(void* arg) {
+    tju_tcp_t* sock = (tju_tcp_t*)arg;
+    // 监听缓冲区中的数据
+    for(;;) {
+        if(sock->sending_len > 0) {
+            pthread_mutex_lock(&sock->send_lock);
+            int window_left = sock->window.wnd_send->window_size 
+            - (sock->window.wnd_send->nextseq - sock->window.wnd_send->base);
+            int len = min(sock->sending_len, window_left);
+            // printf("base: %d.\n", sock->window.wnd_send->base);
+            // printf("next_seq: %d.\n", sock->window.wnd_send->nextseq);
+            // printf("windows size : %d.\n", sock->window.wnd_send->send_windows);
+            // printf("sending len: %d.\n", sock->sending_len);
+            // printf("data len: %d.\n", len);
+
+            char* buf = (char*)malloc(len);
+            memcpy(buf, sock->sending_buf, len);
+
+            int left_size = sock->sending_len - len;
+            if(left_size > 0) {
+                // 若有剩余数据则向前拷贝
+                memcpy(sock->sending_buf, sock->sending_buf + len, left_size);
+            }
+            // 更新socket发送缓冲区的长度
+            sock->sending_len -= len;
+            pthread_mutex_unlock(&sock->send_lock);
+
+            // GBN 处理过程
+            uint16_t plen = DEFAULT_HEADER_LEN + len;
+            uint32_t seq = sock->window.wnd_send->nextseq;
+            uint32_t base = sock->window.wnd_send->base;
+            uint16_t window_size = sock->window.wnd_send->window_size;
+
+            if(seq < base + window_size) {
+                // 发送数据
+                char* ptr = sock->window.wnd_send->send_windows + sock->window.wnd_send->nextseq;
+                memcpy(ptr, buf, len);
+                char* msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 
+                    DEFAULT_HEADER_LEN, plen, NO_FLAG, 1, 0, buf, len);
+                printf("send data.\n");   
+                sendToLayer3(msg, plen);
+            }
+            if(base == seq) {
+                // 开始计时
+                tcp_start_timer(sock);
+            }
+            // 更新nextseq的值
+            sock->window.wnd_send->nextseq += len;
+            // 更新接受窗口的值
+        }
+    }
+}
+
+
+/*
+=============================================================
+========================流量控制==============================
+=============================================================
+*/
 
 void load_data_to_sending_window(tju_tcp_t *sock, const void *buffer, int len) {
     while(pthread_mutex_lock(&(sock->send_lock)) != 0);

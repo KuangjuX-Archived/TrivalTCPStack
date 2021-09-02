@@ -1,5 +1,9 @@
 #include <pthread.h>
 #include "kernel.h"
+#include "sockqueue.h"
+#include <pthread.h>
+#include <unistd.h>
+#include <arpa/inet.h>
 
 /*
 ==========================================================
@@ -12,14 +16,14 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
     uint8_t flag = get_flags(pkt);
     uint32_t seq = get_seq(pkt);
     if(flag == ACK) {
+        printf("receive ACK.\n");
         // 此处为发送方，收到接收方传来的ACK
         // 需要检查是否有“捎带”的数据
         uint32_t seq = get_seq(pkt);
-        sock->window.wnd_send->base = seq + 1;
+        sock->window.wnd_send->base = seq + get_plen(pkt);
         uint32_t base = sock->window.wnd_send->base;
         uint32_t next_seq = sock->window.wnd_send->nextseq;
         if(base == next_seq) {
-            // TODO: 这里应当写收到ACK所需时间，还没想好怎么写
             tcp_stop_timer(sock);
         }else {
             tcp_start_timer(sock);
@@ -34,6 +38,8 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
         // 此处为接收方，收到发送方传来的ACK
         // 这里必须保证seq和expected_seq相同，否则是失序的packet
         uint32_t expected_seq = sock->window.wnd_recv->expect_seq;
+        printf("seq: %d.\n", seq);
+        printf("expected_seq: %d.\n", expected_seq);
         if(seq > expected_seq) {
             // 接受到了之后的seq
             // 选择丢弃或者存起来(选择重传)
@@ -45,8 +51,11 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
             // 向对方发送ACK
             // 修改自己的expected_seq
             tcp_send_ack(sock);
-            sock->window.wnd_recv->expect_seq += 1;
+            // sock->window.wnd_recv->expect_seq += 1;
+            // 更新expected_seq
+            sock->window.wnd_recv->expect_seq += get_plen(pkt);
             // 继续执行，接受数据
+        }else if(seq < expected_seq) {
         }
     }
     uint32_t data_len = get_plen(pkt) - DEFAULT_HEADER_LEN;

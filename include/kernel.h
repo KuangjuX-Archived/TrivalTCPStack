@@ -1,10 +1,8 @@
 #ifndef _KERNEL_H_
 #define _KERNEL_H_
 
-// #include "tju_packet.h"
 #include <unistd.h>
 #include "tju_tcp.h"
-// #include "timer.h"
 
 void tcp_start_timer(tju_tcp_t* sock);
 void tcp_stop_timer(tju_tcp_t* sock);
