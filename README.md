@@ -1,5 +1,5 @@
 # TrivialTCP
-**Trivial is an open source TCP library in user mode implmented in pure C.**  
+**TrivialTCP is an open source TCP library in user mode implmented in pure C.**  
    
 
 We use UDP to simulate the IP layer of the kernel to send and receive packets. **TrivialTCP** is the core part of this project, which can send and receive reliably.  
