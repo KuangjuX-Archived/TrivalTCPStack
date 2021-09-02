@@ -1,5 +1,7 @@
 # TrivialTCP
-Trivial TCP implement in C
+**A TCP protocol library in user mode implmented in pure C.** 
+
+![](docs/image/TrivialTCP.png)
 
 ## Requirements
 - GCC
