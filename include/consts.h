@@ -53,6 +53,10 @@
 #define TCP_SEND_WINDOW_SIZE 128 * MAX_DLEN
 #define MAX_SENDING_ITEM_NUM 1024 //最大file数
 
+// TCP send/recv buffer size
+#define TCP_SEND_BUFFER_SIZE 8*1024*1024 //5MB
+#define TCP_RECV_BUFFER_SIZE 8*1024*1024 //5MB
+
 // TCP改进窗口算法的阈值
 #define IMPROVED_WINDOW_THRESHOLD 0.25
 

@@ -1,3 +1,5 @@
+#include <kernel.h>
+#include <pthread.h>
 #include "tju_tcp.h"
 #include "sockqueue.h"
 #include "utils.h"
@@ -17,6 +19,7 @@ void tcp_stop_timer(tju_tcp_t* sock);
 extern sock_queue* syns_socks;
 extern sock_queue* accept_socks;
 extern tju_tcp_t* connect_sock;
+
 
 /*
 ======================================================

@@ -1,20 +1,16 @@
 #ifndef _TJU_TCP_H_
 #define _TJU_TCP_H_
 
+// #include "global.h"
 
 #include "tju_packet.h"
+// #include "kernel.h"
 #include "consts.h"
-
-typedef struct buffer {
-	int capacity;
-	int size;
-	char* data;
-} buffer;
 
 // TCP 发送窗口
 // 注释的内容如果想用就可以用 不想用就删掉 仅仅提供思路和灵感
 typedef struct {
-	char* send_windows;
+	tju_packet_t send_windows[TCP_SEND_WINDOW_SIZE];
 	uint16_t window_size;
   	uint32_t base;
     uint32_t nextseq;
@@ -33,7 +29,7 @@ typedef struct {
 // 注释的内容如果想用就可以用 不想用就删掉 仅仅提供思路和灵感
 // 发现窗口用字节数描述太难实现了，暂时使用packet来代替
 typedef struct {
-	char* receiver_window;
+	tju_packet_t received[TCP_RECV_WINDOW_SIZE];
 
     //  received_packet_t* head;
     char buf[TCP_RECVWN_SIZE];
@@ -70,10 +66,8 @@ typedef struct tju_tcp_t {
 	tju_sock_addr established_remote_addr; // 存放建立连接后 连接对方的 IP和端口
 
 	pthread_mutex_t send_lock; // 发送数据锁
-	pthread_t send_thread; // 发送线程
 	char* sending_buf; // 发送数据缓存区
 	int sending_len; // 发送数据缓存长度
-	int sending_capacity; // 发送缓冲区容量
 	int sending_item_flag[MAX_SENDING_ITEM_NUM];
 
 	pthread_mutex_t recv_lock; // 接收数据锁
@@ -107,7 +101,7 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt);
 void tcp_send_fin(tju_tcp_t* sock);
 void tcp_send_ack(tju_tcp_t* sock);
 
-void tcp_update_expected_seq(tju_tcp_t* tcp, char* pkt);
+void tcp_update_expected_seq(tju_tcp_t* tcp, tju_packet_t* pkt);
 
 /*
 ================================================
@@ -127,8 +121,6 @@ static unsigned short tcp_compute_checksum(tju_packet_t* pkt);
 
 void set_checksum(tju_packet_t* pkt);
 
-void* tcp_send_stream(void* arg);
-
 /*
 ===================================================
 =======================流量控制======================
@@ -139,5 +131,5 @@ int handle_improved_window();
 void load_data_to_sending_window(tju_tcp_t *sock, const void *pVoid, int len);
 void calculate_sending_buffer_depend_on_rwnd(tju_tcp_t* sock);
 void handle_delay_ack(tju_tcp_t* sock, char* pkt);
-#endif
 
+#endif

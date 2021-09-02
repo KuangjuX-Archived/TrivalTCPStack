@@ -18,11 +18,12 @@ tju_tcp_t* tcp_socket(){
     sock->state = CLOSED;
     
     pthread_mutex_init(&(sock->send_lock), NULL);
-    sock->sending_buf = NULL;
+    sock->sending_buf = (char*)malloc(TCP_SEND_BUFFER_SIZE);
     sock->sending_len = 0;
+    sock->sending_capacity = TCP_SEND_BUFFER_SIZE;
 
     pthread_mutex_init(&(sock->recv_lock), NULL);
-    sock->received_buf = NULL;
+    sock->received_buf = (char*)malloc(TCP_RECV_BUFFER_SIZE);
     sock->received_len = 0;
     
     if(pthread_cond_init(&sock->wait_cond, NULL) != 0){
@@ -41,9 +42,9 @@ tju_tcp_t* tcp_socket(){
     tcp_init_timer(sock, tcp_write_timer_handler);
 
     // 初始化send_buffer
-    sock->sending_capacity = 128 * 1024;
-    sock->sending_len = 0;
-    sock->sending_buf = (char*)malloc(sock->sending_capacity);
+//     sock->sending_capacity = 128 * 1024;
+//     sock->sending_len = 0;
+//     sock->sending_buf = (char*)malloc(sock->sending_capacity);
 
     // 开启监测发送缓冲区线程
     // pthread_create(&sock->send_thread, NULL, tcp_send_stream, (void*)sock);
@@ -221,7 +222,7 @@ int tcp_send(tju_tcp_t* sock, const void *buffer, int len){
 }
 
 int tcp_recv(tju_tcp_t* sock, void *buffer, int len){
-    while(sock->received_len <= 0){
+     while(sock->received_len <= 0){
         // 阻塞
     }
     while(pthread_mutex_lock(&(sock->recv_lock)) != 0); // 加锁
@@ -236,14 +237,9 @@ int tcp_recv(tju_tcp_t* sock, void *buffer, int len){
     memcpy(buffer, sock->received_buf, read_len);
 
     if(read_len < sock->received_len) { // 还剩下一些
-        char* new_buf = malloc(sock->received_len - read_len);
-        memcpy(new_buf, sock->received_buf + read_len, sock->received_len - read_len);
-        free(sock->received_buf);
+        memcpy(sock->received_buf,sock->received_buf+read_len,sock->received_len-read_len);
         sock->received_len -= read_len;
-        sock->received_buf = new_buf;
     }else{
-        free(sock->received_buf);
-        sock->received_buf = NULL;
         sock->received_len = 0;
     }
     pthread_mutex_unlock(&(sock->recv_lock)); // 解锁
