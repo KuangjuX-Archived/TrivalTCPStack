@@ -75,6 +75,7 @@ typedef struct tju_tcp_t {
 	pthread_mutex_t recv_lock; // 接收数据锁
 	char* received_buf; // 接收数据缓存区
 	int received_len; // 接收数据缓存长度
+	int received_capacity; // 接受缓冲区容量
 
 	pthread_cond_t wait_cond; // 可以被用来唤醒recv函数调用时等待的线程
 

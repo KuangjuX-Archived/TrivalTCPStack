@@ -27,6 +27,7 @@ tju_tcp_t* tcp_socket(){
     pthread_mutex_init(&sock->recv_lock, NULL);
     sock->received_buf = (char*)malloc(TCP_RECV_BUFFER_SIZE);
     sock->received_len = 0;
+    sock->received_capacity = TCP_RECV_BUFFER_SIZE;
     
     if(pthread_cond_init(&sock->wait_cond, NULL) != 0){
         perror("ERROR condition variable not set\n");
