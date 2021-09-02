@@ -131,5 +131,6 @@ int handle_improved_window();
 void load_data_to_sending_window(tju_tcp_t *sock, const void *pVoid, int len);
 void calculate_sending_buffer_depend_on_rwnd(tju_tcp_t* sock);
 void handle_delay_ack(tju_tcp_t* sock, char* pkt);
+
 #endif
 
