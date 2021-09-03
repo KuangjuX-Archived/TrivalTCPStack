@@ -3,6 +3,8 @@
 #include "chan.h"
 #include "utils.h"
 
+int tcp_close (tju_tcp_t* sock);
+
 // TODO: sock作为参数传入是否可以当作全局变量， 
 // 是否需要传入index从哈希表中获取
 // 检查是否超时
@@ -88,7 +90,7 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
     // 这里需要针对socket的状态进行不同的操作
     switch(sock->state) {
         // 这里暂时先不考虑三次握手超时的情况
-        case SYN_RECV:
+        case SYN_SENT:
             printf("transmit RST.\n");
         case ESTABLISHED: 
             // 超时重传，这里或许需要判断一下重传的次数，若重传次数过多应该关闭连接
@@ -156,5 +158,5 @@ void tcp_entry_loss(tju_tcp_t* sock) {
 
 // 重传次数太多，此时应当主动关闭连接
 void tcp_outlimit_retransmit(tju_tcp_t* sock) {
-
+    tcp_close(sock);
 }

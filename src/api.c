@@ -250,7 +250,7 @@ int tcp_recv(tju_tcp_t* sock, void *buffer, int len){
 }
 
 // 关闭连接，向远程发送FIN pakcet，等待资源释放
-int tcp_close (tju_tcp_t* sock){
+int tcp_close (tju_tcp_t* sock) {
     // 首先应该检查接收队列中的缓冲区是否仍有剩余
     while(sock->received_buf != NULL) {
         // 若仍有剩余则清空
