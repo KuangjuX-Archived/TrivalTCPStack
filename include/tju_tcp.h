@@ -70,7 +70,6 @@ typedef struct tju_tcp_t {
 	char* sending_buf; // 发送数据缓存区
 	int sending_len; // 发送数据缓存长度
 	int sending_capacity; // 发送缓冲区容量
-	int sending_item_flag[MAX_SENDING_ITEM_NUM];
 
 	pthread_mutex_t recv_lock; // 接收数据锁
 	char* received_buf; // 接收数据缓存区
@@ -128,10 +127,14 @@ void set_checksum(tju_packet_t* pkt);
 =======================流量控制======================
 ===================================================
 */
+
+
+
 int handle_improved_window();
 
 void load_data_to_sending_window(tju_tcp_t *sock, const void *pVoid, int len);
-void calculate_sending_buffer_depend_on_rwnd(tju_tcp_t* sock);
+int calculate_sending_buffer_depend_on_rwnd(tju_tcp_t* sock);
 void handle_delay_ack(tju_tcp_t* sock, char* pkt);
-
+int improve_send_wnd(tju_tcp_t* sock);
+void keep_alive(tju_tcp_t *sock);
 #endif

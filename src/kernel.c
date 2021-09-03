@@ -15,6 +15,8 @@
 int tju_handle_packet(tju_tcp_t* sock, char* pkt){
     uint8_t flag = get_flags(pkt);
     uint32_t seq = get_seq(pkt);
+    uint32_t adv_wnd= get_advertised_window(pkt);
+    sock->window.wnd_send->rwnd=adv_wnd;
     if(flag == ACK) {
         printf("receive ACK.\n");
         // 此处为发送方，收到接收方传来的ACK
@@ -84,6 +86,7 @@ int onTCPPocket(char* pkt){
     // 当我们收到TCP包时 包中 源IP 源端口 是发送方的 也就是我们眼里的 远程(remote) IP和端口
     uint16_t remote_port = get_src(pkt);
     uint16_t local_port = get_dst(pkt);
+    printf("get a pkt rwnd is %d \n", get_advertised_window(pkt));
     // remote ip 和 local ip 是读IP 数据包得到的 仿真的话这里直接根据hostname判断
     // 获取是server还是client
     int is_server;
@@ -188,7 +191,7 @@ void sendToLayer3(char* packet_buf, int packet_len){
  一旦收到了大于TCPheader长度的数据 
  则接受整个TCP包并调用onTCPPocket()
 */
-void* receive_thread(void* arg){
+_Noreturn void* receive_thread(void* arg){
 
     char hdr[DEFAULT_HEADER_LEN];
     char* pkt;

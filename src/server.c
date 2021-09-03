@@ -8,7 +8,7 @@
 #define SIZE 8192
 
 
-void echo(void* client) {
+_Noreturn void echo(void* client) {
     tju_tcp_t* socket = (tju_tcp_t*) client;
     printf("Start receive client message.\n");
     while (TRUE) {
@@ -51,10 +51,10 @@ int main(int argc, char **argv) {
     tcp_recv(conn_sock, (void*)buf, 12);
     printf("%s\n", buf);
     tcp_send(conn_sock, (void*)buf, 12);
-
-    tcp_recv(conn_sock, (void*)buf, 10);
-    printf("%s\n", buf);
-    tcp_send(conn_sock, (void*)buf, 10);
+//
+//    tcp_recv(conn_sock, (void*)buf, 10);
+//    printf("%s\n", buf);
+//    tcp_send(conn_sock, (void*)buf, 10);
     while(TRUE){}
 
     return EXIT_SUCCESS;

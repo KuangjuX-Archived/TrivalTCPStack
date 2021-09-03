@@ -3,7 +3,7 @@
 #include "kernel.h"
 #include "sockqueue.h"
 
-void* tcp_send_stream(void* arg);
+_Noreturn void* tcp_send_stream(void* arg);
 /*
 =======================================================
 ====================系统调用API函数如下===================
@@ -39,7 +39,7 @@ tju_tcp_t* tcp_socket(){
     sock->window.wnd_send->send_windows = (char*)malloc(TCP_SEND_WINDOW_SIZE);
     sock->window.wnd_recv->receiver_window = (char*)malloc(TCP_RECV_WINDOW_SIZE);
     sock->window.wnd_send->window_size = TCP_SEND_WINDOW_SIZE;
-
+    sock->window.wnd_send->rwnd=1;
     // 初始化定时器及回调函数
     tcp_init_timer(sock, tcp_write_timer_handler);
 
@@ -188,7 +188,6 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
 }
 
 int tcp_send(tju_tcp_t* sock, const void *buffer, int len){
-    // 这里当然不能直接简单地调用sendToLayer3
     char* data = malloc(len);
     memcpy(data, buffer, len);
 

@@ -29,6 +29,7 @@ extern tju_tcp_t* connect_sock;
 
 int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
     uint8_t flags = get_flags(pkt);
+    sock->window.wnd_send->rwnd= get_advertised_window(pkt);
     // 通过socket状态进行处理
     switch (sock->state) {
         case CLOSED:
@@ -101,6 +102,7 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
 
 int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
     uint8_t flags = get_flags(pkt);
+    sock->window.wnd_send->rwnd= get_advertised_window(pkt);
     switch(flags) {
         case SYN_RECV:
             if(sock->state == SYN_SENT) {
@@ -112,6 +114,7 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
                 // 头部长度
                 int len = 20;
                 // 构建packet发送给服务端
+                uint16_t adv_wnd=TCP_SEND_BUFFER_SIZE-sock->received_len;
                 char* send_pkt = create_packet_buf(
                     sock->established_local_addr.port,
                     conn_sock->port,
@@ -120,7 +123,7 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
                     HEADER_LEN,
                     HEADER_LEN,
                     ESTABLISHED,
-                    0,
+                    adv_wnd,
                     0,
                     NULL,
                     0
@@ -242,6 +245,7 @@ void tcp_send_ack(tju_tcp_t* sock) {
     // 瞎编seq和ack
     uint32_t seq = sock->window.wnd_recv->expect_seq;
     uint32_t ack = seq;
+    int rwnd=TCP_RECV_BUFFER_SIZE-sock->received_len;
     char* send_pkt = create_packet_buf(
         sock->established_local_addr.port,
         sock->established_remote_addr.port,
@@ -250,7 +254,7 @@ void tcp_send_ack(tju_tcp_t* sock) {
         HEADER_LEN,
         HEADER_LEN,
         ACK,
-        0,
+        rwnd,
         0,
         NULL,
         0
@@ -342,14 +346,17 @@ void set_checksum(tju_packet_t* pkt) {
  **/
 
 // 通过GBN将发送缓冲区的内容发送给下层协议
-void* tcp_send_stream(void* arg) {
+_Noreturn void* tcp_send_stream(void* arg) {
     tju_tcp_t* sock = (tju_tcp_t*)arg;
     // 监听缓冲区中的数据
     for(;;) {
         if(sock->sending_len > 0) {
+            int improve_flag=improve_send_wnd(sock);
+            if(!improve_flag) continue;
             pthread_mutex_lock(&sock->send_lock);
             int window_left = sock->window.wnd_send->window_size 
             - (sock->window.wnd_send->nextseq - sock->window.wnd_send->base);
+
             int len = min(sock->sending_len, window_left);
             // printf("base: %d.\n", sock->window.wnd_send->base);
             // printf("next_seq: %d.\n", sock->window.wnd_send->nextseq);
@@ -377,11 +384,12 @@ void* tcp_send_stream(void* arg) {
 
             if(seq < base + window_size) {
                 // 发送数据
+                uint16_t adv_wnd=TCP_SEND_BUFFER_SIZE-sock->received_len;
                 char* ptr = sock->window.wnd_send->send_windows + sock->window.wnd_send->nextseq;
                 memcpy(ptr, buf, len);
                 char* msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 
-                    DEFAULT_HEADER_LEN, plen, NO_FLAG, 1, 0, buf, len);
-                printf("send data.\n");   
+                    DEFAULT_HEADER_LEN, plen, NO_FLAG, adv_wnd, 0, buf, len);
+                printf("send data. %d\n",adv_wnd);
                 sendToLayer3(msg, plen);
             }
             if(base == seq) {
@@ -419,6 +427,18 @@ void load_data_to_sending_window(tju_tcp_t *sock, const void *buffer, int len) {
 }
 
 //根据sending len自动切分tcp data发送buffer中内容到layer3,最后一个包的
+
+int improve_send_wnd(tju_tcp_t* sock){
+    float rwnd= (float)sock->window.wnd_send->rwnd;
+    float data_on_way=(float)sock->window.wnd_send->nextseq-sock->window.wnd_send->base;
+    printf("rwnd:%f\n t:%f\n",rwnd,(rwnd-data_on_way)/rwnd);
+    if((rwnd-data_on_way)/rwnd<IMPROVED_WINDOW_THRESHOLD){
+        return 0;
+    }else{
+        return 1;
+    }
+}
+
 void sending_buffer_to_layer3(tju_tcp_t *sock,int len,int push_bit_flag){
     //#TODO ! some params of create_packet_buf are WRONG for a complete implementation, FIX it for a later time.
     // 完整包数
@@ -462,20 +482,11 @@ void sending_buffer_to_layer3(tju_tcp_t *sock,int len,int push_bit_flag){
     pthread_mutex_unlock(&(sock->recv_lock));
 }
 
-void calculate_sending_buffer_depend_on_rwnd(tju_tcp_t* sock){
-    //    int if_nagle_flag=FALSE;
-    // #TODO Nagle alg
-    // 两种情况
-    if(sock->window.wnd_send->rwnd>=sock->sending_len){
-        sending_buffer_to_layer3(sock,sock->sending_len,TRUE);
-    }else{
-        // #TODO blow code could block the thread, rewrite later time.
-        while(sock->sending_len!=0){
-            sending_buffer_to_layer3(sock,sock->window.wnd_send->rwnd,TRUE);
-            while(pthread_mutex_lock(&(sock->send_lock)) != 0);
-            memcpy(sock->sending_buf,sock->sending_buf+sock->window.wnd_send->rwnd,sock->sending_len-sock->window.wnd_send->rwnd);
-            sock->sending_len-=sock->window.wnd_send->rwnd;
-            pthread_mutex_unlock(&(sock->recv_lock));
-        }
-    }
+void keep_alive(tju_tcp_t *sock){
+    uint32_t seq = sock->window.wnd_send->nextseq;
+    char* buf = (char*)malloc(0);
+    int plen=HEADER_LEN;
+    char* msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0,
+                                  DEFAULT_HEADER_LEN, plen, NO_FLAG, 1, 0, buf, 0);
+    sendToLayer3(msg, plen);
 }

@@ -48,7 +48,7 @@ void startSimulation();
 /*
  使用UDP进行数据接收的线程
 */
-static void* receive_thread(void * in);
+_Noreturn static void* receive_thread(void * in);
 
 // 接受UDP的socket的标识符
 int BACKEND_UDPSOCKET_ID;

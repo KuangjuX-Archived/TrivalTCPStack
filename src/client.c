@@ -22,13 +22,12 @@ int main(int argc, char **argv) {
 
     char buf[2021];
     tcp_recv(my_socket, (void*)buf, 12);
-    printf("client recv %s\n", buf);
+    printf("client recv1 %s\n", buf);
 
-    tcp_send(my_socket, "hello tju", 10);
-    tcp_recv(my_socket, (void*)buf, 10);
-    printf("client recv %s\n", buf);
-
-    tcp_close(my_socket);
-
+//    tcp_send(my_socket, "hello tju", 10);
+//    tcp_recv(my_socket, (void*)buf, 10);
+//    printf("client recv2 %s\n", buf);
+//    tcp_close(my_socket);
+    while(TRUE){}
     return EXIT_SUCCESS;
 }
