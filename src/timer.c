@@ -48,7 +48,7 @@ void tcp_init_rtt(struct tju_tcp_t* sock) {
     sock->rtt_timer = (rtt_timer_t*)malloc(sizeof(rtt_timer_t));
     sock->rtt_timer->estimated_rtt = 1;
     sock->rtt_timer->dev_rtt = 1;
-    sock->rtt_timer->timeout = 1000;
+    sock->rtt_timer->timeout = 2;
     sock->rtt_timer->timer_thread = 0;
 }
 
