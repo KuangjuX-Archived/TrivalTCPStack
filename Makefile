@@ -3,6 +3,9 @@ INC_DIR = $(TOP_DIR)/include
 SRC_DIR = $(TOP_DIR)/src
 BUILD_DIR = $(TOP_DIR)/build
 
+LIBCO = $(TOP_DIR)/libco/lib
+SOLIBCO = $(TOP_DIR)/libco/solib
+
 CC = gcc
 FLAGS = -pthread -g -ggdb -DDEBUG -I$(INC_DIR) -std=c11
 
@@ -28,17 +31,17 @@ $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c
 	@$(CC) $(FLAGS) -c -o $@ $<
 
 lib:
-	@$(CC) $(FLAGS) -c 
+	@make -C libco
 
 clean:
-	@-rm -f ./build/*.o $(BUILD_DIR)/client $(BUILD_DIR)/server
+	@rm -f ./build/*.o $(BUILD_DIR)/client $(BUILD_DIR)/server
 
 server: $(OBJS)
-	@$(CC) $(FLAGS) ./src/server.c -o $(BUILD_DIR)/server $(OBJS)
+	@$(CC) $(FLAGS) ./src/server.c -o $(BUILD_DIR)/server $(OBJS) $(LIBCO)/libcolib.a
 	@$(BUILD_DIR)/server
 
 client: $(OBJS)
-	@$(CC) $(FLAGS) ./src/client.c -o $(BUILD_DIR)/client $(OBJS) 
+	@$(CC) $(FLAGS) ./src/client.c -o $(BUILD_DIR)/client $(OBJS) $(LIBCO)/libcolib.a
 	@$(BUILD_DIR)/client
 
 
