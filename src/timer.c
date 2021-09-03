@@ -87,6 +87,7 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
     sock->rtt_timer->chan = NULL;
     // 这里需要针对socket的状态进行不同的操作
     switch(sock->state) {
+        // 这里暂时先不考虑三次握手超时的情况
         case SYN_RECV:
             printf("transmit RST.\n");
         case ESTABLISHED: 

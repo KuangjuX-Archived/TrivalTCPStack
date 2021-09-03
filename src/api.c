@@ -162,7 +162,7 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
         ack,
         HEADER_LEN,
         HEADER_LEN,
-        SYN_SENT,
+        SYN,
         0,
         0,
         NULL,

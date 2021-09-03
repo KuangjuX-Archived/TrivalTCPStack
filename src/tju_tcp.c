@@ -38,7 +38,7 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
             return -1;
         case LISTEN:
             // 判断packet flags 是否为 SYN_SENT 并判断ack的值
-            if (flags == SYN_SENT) {
+            if (flags == SYN) {
                 // 第二次握手，服务端修改自己的状态，
                 // 并且发送 SYN_RECV 标志的pakcet，
                 // 加入到半连接哈希表中（暂时不考虑重置状态）                
@@ -62,7 +62,7 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 sock->saved_syn = index;
                 // 创建带有状态的packet
                 char* send_pkt;
-                int len = build_state_pkt(pkt, &send_pkt, SYN_RECV);
+                int len = build_state_pkt(pkt, &send_pkt, (SYN | ACK));
                 // 发送packet到客户端
                 sendToLayer3(send_pkt, len);
                 return 0;
@@ -72,7 +72,7 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 return -1;
             }
         case SYN_SENT:
-            if (flags == ESTABLISHED) {
+            if (flags == ACK) {
                 // 第三次握手，服务端发送ACK报文， 服务端将自己的socket变为ESTABLISHED，
                 // 从syns_socks取出对应的socket并加入到accept_socks中
                 sock->state = ESTABLISHED;
@@ -104,7 +104,7 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
     uint8_t flags = get_flags(pkt);
     sock->window.wnd_send->rwnd= get_advertised_window(pkt);
     switch(flags) {
-        case SYN_RECV:
+        case (SYN | ACK):
             if(sock->state == SYN_SENT) {
                 // client首次收到ACK， 更新窗口expected_seq
                 tcp_update_expected_seq(sock, pkt);
@@ -122,7 +122,7 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
                     ack,
                     HEADER_LEN,
                     HEADER_LEN,
-                    ESTABLISHED,
+                    ACK,
                     adv_wnd,
                     0,
                     NULL,
