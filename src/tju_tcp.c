@@ -413,7 +413,7 @@ _Noreturn void* tcp_send_stream(void* arg) {
 =============================================================
 */
 
-void load_data_to_sending_window(tju_tcp_t *sock, const void *buffer, int len) {
+void load_data_to_sending_buffer(tju_tcp_t *sock, const void *buffer, int len) {
     while(pthread_mutex_lock(&(sock->send_lock)) != 0);
     // 判断是否有足够空间存储数据
     if(sock->sending_len+len>TCP_RECVWN_SIZE){
