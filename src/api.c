@@ -170,6 +170,7 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
         NULL,
         0
     );
+    tcp_start_timer(sock);
     sendToLayer3(send_pkt, HEADER_LEN);
 
     // 这里阻塞直到socket的状态变为ESTABLISHED

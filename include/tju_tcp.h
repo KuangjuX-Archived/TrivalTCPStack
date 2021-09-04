@@ -112,6 +112,8 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt);
 
 // 传输控制位packet
 void tcp_send_fin(tju_tcp_t* sock);
+void tcp_send_syn(tju_tcp_t* sock);
+void tcp_send_syn_ack(tju_tcp_t* sock);
 void tcp_send_ack(tju_tcp_t* sock, int len);
 
 void tcp_update_expected_seq(tju_tcp_t* sock, char* pkt);

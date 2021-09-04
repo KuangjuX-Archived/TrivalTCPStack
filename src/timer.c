@@ -18,7 +18,7 @@ void* tcp_check_timeout(void* arg) {
     // 初始化信号量
     while(time(NULL) < out_time) {
         if (sock->interrupt_signal == 1) {
-            printf("receive interrupt signal");
+            printf("receive interrupt signal.\n");
             // 更新RTT的值
             tcp_ack_update_rtt(sock, time(NULL) - cur_time, 1);
             // 销毁channel
@@ -81,13 +81,12 @@ int tcp_ack_update_rtt(tju_tcp_t* sock, float seq_rtt_us, float sack_rtt_us) {
 // 当计时器超时时的回调函数
 void tcp_write_timer_handler(tju_tcp_t* sock) {
     printf("timeout.\n");
-    chan_dispose(sock->rtt_timer->chan);
-    sock->rtt_timer->chan = NULL;
     // 这里需要针对socket的状态进行不同的操作
     switch(sock->state) {
-        // 这里暂时先不考虑三次握手超时的情况
         case SYN_SENT:
-            printf("transmit RST.\n");
+            tcp_send_syn(sock);
+        case SYN_RECV:  
+            tcp_send_syn_ack(sock);
         case ESTABLISHED: 
             // 超时重传，这里或许需要判断一下重传的次数，若重传次数过多应该关闭连接
             if(sock->timeout_counts > RETRANSMIT_LIMIT) {
@@ -103,6 +102,7 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
             printf("Unresolved status.\n");
     }
 }
+
 
 // 开始计时，创建新线程
 void tcp_start_timer(tju_tcp_t* sock) {

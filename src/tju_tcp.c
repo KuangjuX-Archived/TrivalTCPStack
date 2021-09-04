@@ -64,6 +64,7 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 char* send_pkt;
                 int len = build_state_pkt(pkt, &send_pkt, (SYN | ACK));
                 // 发送packet到客户端
+                tcp_start_timer(sock);
                 sendToLayer3(send_pkt, len);
                 return 0;
             } else {
@@ -73,6 +74,7 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
             }
         case SYN_SENT:
             if (flags == ACK) {
+                tcp_stop_timer(sock);
                 // 第三次握手，服务端发送ACK报文， 服务端将自己的socket变为ESTABLISHED，
                 // 从syns_socks取出对应的socket并加入到accept_socks中
                 sock->state = ESTABLISHED;
@@ -106,6 +108,7 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
     switch(flags) {
         case (SYN | ACK):
             if(sock->state == SYN_SENT) {
+                tcp_stop_timer(sock);
                 // client首次收到ACK， 更新窗口expected_seq
                 tcp_update_expected_seq(sock, pkt);
                 // 随便编的seq
@@ -225,6 +228,49 @@ void tcp_send_fin(tju_tcp_t* sock) {
     int seq = sock->window.wnd_recv->expect_seq;
     int ack = seq;
     int flags = ACK | FIN;
+    send_pkt = create_packet_buf(
+        sock->established_local_addr.port,
+        sock->established_remote_addr.port,
+        seq,
+        ack,
+        HEADER_LEN,
+        HEADER_LEN,
+        flags,
+        0,
+        0,
+        NULL,
+        0
+    );
+    sendToLayer3(send_pkt, HEADER_LEN);
+}
+
+
+void tcp_send_syn(tju_tcp_t* sock) {
+    char* send_pkt;
+    int seq = sock->window.wnd_recv->expect_seq;
+    int ack = seq;
+    int flags = SYN;
+    send_pkt = create_packet_buf(
+        sock->established_local_addr.port,
+        sock->established_remote_addr.port,
+        seq,
+        ack,
+        HEADER_LEN,
+        HEADER_LEN,
+        flags,
+        0,
+        0,
+        NULL,
+        0
+    );
+    sendToLayer3(send_pkt, HEADER_LEN);
+}
+
+void tcp_send_syn_ack(tju_tcp_t* sock) {
+    char* send_pkt;
+    int seq = sock->window.wnd_recv->expect_seq;
+    int ack = seq;
+    int flags = SYN | ACK;
     send_pkt = create_packet_buf(
         sock->established_local_addr.port,
         sock->established_remote_addr.port,
