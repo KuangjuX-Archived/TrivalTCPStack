@@ -159,7 +159,7 @@ int onTCPPocket(char* pkt){
 不可以修改此函数实现
 */
 void sendToLayer3(char* packet_buf, int packet_len){
-    if (packet_len>MAX_LEN){
+    if (packet_len > MAX_LEN){
         printf("ERROR: 不能发送超过 MAX_LEN 长度的packet, 防止IP层进行分片\n");
         return;
     }

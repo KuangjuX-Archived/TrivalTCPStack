@@ -358,12 +358,6 @@ _Noreturn void* tcp_send_stream(void* arg) {
             - (sock->window.wnd_send->nextseq - sock->window.wnd_send->base);
 
             int len = min(sock->sending_len, window_left);
-            // printf("base: %d.\n", sock->window.wnd_send->base);
-            // printf("next_seq: %d.\n", sock->window.wnd_send->nextseq);
-            // printf("windows size : %d.\n", sock->window.wnd_send->send_windows);
-            // printf("sending len: %d.\n", sock->sending_len);
-            // printf("data len: %d.\n", len);
-
             char* buf = (char*)malloc(len);
             memcpy(buf, sock->sending_buf, len);
 

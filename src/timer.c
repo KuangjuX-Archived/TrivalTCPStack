@@ -48,7 +48,7 @@ void tcp_init_rtt(struct tju_tcp_t* sock) {
     sock->rtt_timer = (rtt_timer_t*)malloc(sizeof(rtt_timer_t));
     sock->rtt_timer->estimated_rtt = 1;
     sock->rtt_timer->dev_rtt = 1;
-    sock->rtt_timer->timeout = 2;
+    sock->rtt_timer->timeout = 1000;
     sock->rtt_timer->timer_thread = 0;
 }
 
@@ -85,6 +85,7 @@ int tcp_ack_update_rtt(tju_tcp_t* sock, float seq_rtt_us, float sack_rtt_us) {
 
 // 当计时器超时时的回调函数
 void tcp_write_timer_handler(tju_tcp_t* sock) {
+    printf("timeout.\n");
     chan_dispose(sock->rtt_timer->chan);
     sock->rtt_timer->chan = NULL;
     // 这里需要针对socket的状态进行不同的操作
@@ -132,11 +133,6 @@ void tcp_retransmit_timer(tju_tcp_t* sock) {
     int base = sock->window.wnd_send->base % TCP_SEND_WINDOW_SIZE;
     int next_seq = sock->window.wnd_send->nextseq % TCP_SEND_WINDOW_SIZE;
     int len = next_seq - base;
-    // for(int i = base; i < next_seq; i++) {
-    //     tju_packet_t pkt = sock->window.wnd_send->send_windows[i%TCP_SEND_WINDOW_SIZE];
-    //     char* buf = packet_to_buf(&pkt);
-    //     tcp_send(sock, buf, pkt.header.plen);
-    // }
     char* buf = (char*)malloc(next_seq - base);
     memcpy(buf, sock->window.wnd_send->send_windows + base, len);
 
