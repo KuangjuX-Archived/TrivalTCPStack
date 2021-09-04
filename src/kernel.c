@@ -58,6 +58,8 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
             sock->window.wnd_recv->expect_seq += get_plen(pkt);
             // 继续执行，接受数据
         }else if(seq < expected_seq) {
+            printf("Invalid sequence number.\n");
+            return -1;
         }
     }
     uint32_t data_len = get_plen(pkt) - DEFAULT_HEADER_LEN;

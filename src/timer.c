@@ -48,7 +48,7 @@ void tcp_init_rtt(struct tju_tcp_t* sock) {
     sock->rtt_timer = (rtt_timer_t*)malloc(sizeof(rtt_timer_t));
     sock->rtt_timer->estimated_rtt = 1;
     sock->rtt_timer->dev_rtt = 1;
-    sock->rtt_timer->timeout = 1000;
+    sock->rtt_timer->timeout = 10;
     sock->rtt_timer->timer_thread = 0;
 }
 
@@ -97,9 +97,11 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
             // 超时重传，这里或许需要判断一下重传的次数，若重传次数过多应该关闭连接
             if(sock->timeout_counts > RETRANSMIT_LIMIT) {
                 // 重传次数超限，关闭连接
+                printf("重传次数超限，关闭连接.\n");
                 tcp_outlimit_retransmit(sock);
             }else {
                 // 重传分组
+                sock->timeout_counts += 1;
                 tcp_retransmit_timer(sock);
             }
         default:
@@ -129,7 +131,6 @@ void tcp_stop_timer(tju_tcp_t* sock) {
 
 // 超时重传函数处理
 void tcp_retransmit_timer(tju_tcp_t* sock) {
-    tcp_start_timer(sock);
     int base = sock->window.wnd_send->base % TCP_SEND_WINDOW_SIZE;
     int next_seq = sock->window.wnd_send->nextseq % TCP_SEND_WINDOW_SIZE;
     int len = next_seq - base;
@@ -142,8 +143,9 @@ void tcp_retransmit_timer(tju_tcp_t* sock) {
     msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 
               DEFAULT_HEADER_LEN, plen, NO_FLAG, 1, 0, buf, len);
     
+    // 打开计时器
+    tcp_start_timer(sock);
     sendToLayer3(msg, plen);
-    
 
 }
 

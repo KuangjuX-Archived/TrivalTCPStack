@@ -107,7 +107,7 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
         case (SYN | ACK):
             if(sock->state == SYN_SENT) {
                 // client首次收到ACK， 更新窗口expected_seq
-                tcp_update_expected_seq(sock, pkt);
+                // tcp_update_expected_seq(sock, pkt);
                 // 随便编的seq
                 int seq = get_seq(pkt) + 1;
                 int ack = get_seq(pkt) + 1;
