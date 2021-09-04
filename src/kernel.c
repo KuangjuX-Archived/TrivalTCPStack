@@ -55,7 +55,8 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
             tcp_send_ack(sock);
             // sock->window.wnd_recv->expect_seq += 1;
             // 更新expected_seq
-            sock->window.wnd_recv->expect_seq += get_plen(pkt);
+            int len = get_plen(pkt) - get_hlen(pkt);
+            sock->window.wnd_recv->expect_seq += len;
             // 继续执行，接受数据
         }else if(seq < expected_seq) {
             printf("Invalid sequence number.\n");

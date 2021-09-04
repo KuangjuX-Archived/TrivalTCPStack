@@ -61,7 +61,7 @@ execute `make server` in server container and execute `make client` in client co
 - [x] Timer
 - [x] System API: bind, listen, accept, connect, recv, send, close
 - [x] Reliable Transmission
-- [ ] Flow Control
+- [x] Flow Control
 - [ ] Congestion Control
 
 ## Differnes

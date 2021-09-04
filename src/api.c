@@ -116,6 +116,8 @@ int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
     );
     established_socks[hashval] = conn_sock;
     conn_sock->window.wnd_recv->expect_seq = 0;
+    conn_sock->window.wnd_send->base = 0;
+    conn_sock->window.wnd_send->nextseq = 0;
     pthread_create(&conn_sock->send_thread, NULL, tcp_send_stream, (void*)conn_sock);
     printf("Connection established.\n");
 
@@ -179,6 +181,9 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
         sock->established_remote_addr.port
     );
     established_socks[hashval] = sock;
+    sock->window.wnd_recv->expect_seq = 0;
+    sock->window.wnd_send->base = 0;
+    sock->window.wnd_send->nextseq = 0;
 
     printf("Client connect success.\n");
     return 0;

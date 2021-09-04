@@ -24,9 +24,9 @@ int main(int argc, char **argv) {
     tcp_recv(my_socket, (void*)buf, 12);
     printf("client recv1 %s\n", buf);
 
-//    tcp_send(my_socket, "hello tju", 10);
-//    tcp_recv(my_socket, (void*)buf, 10);
-//    printf("client recv2 %s\n", buf);
+    tcp_send(my_socket, "hello tju", 10);
+    tcp_recv(my_socket, (void*)buf, 10);
+    printf("client recv2 %s\n", buf);
 //    tcp_close(my_socket);
     while(TRUE){}
     return EXIT_SUCCESS;

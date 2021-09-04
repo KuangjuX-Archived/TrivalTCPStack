@@ -51,10 +51,10 @@ int main(int argc, char **argv) {
     tcp_recv(conn_sock, (void*)buf, 12);
     printf("%s\n", buf);
     tcp_send(conn_sock, (void*)buf, 12);
-//
-//    tcp_recv(conn_sock, (void*)buf, 10);
-//    printf("%s\n", buf);
-//    tcp_send(conn_sock, (void*)buf, 10);
+
+    tcp_recv(conn_sock, (void*)buf, 10);
+    printf("%s\n", buf);
+    tcp_send(conn_sock, (void*)buf, 10);
     while(TRUE){}
 
     return EXIT_SUCCESS;
