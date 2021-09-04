@@ -25,6 +25,9 @@ void* tcp_check_timeout(void* arg) {
             chan_dispose(sock->rtt_timer->chan);
             sock->rtt_timer->chan = NULL;
             return NULL;
+        }else {
+            // 休息一会，防止不断轮询导致CPU负载过重
+            sleep(1);
         }
     }
     // 此时超时，调用回调函数
