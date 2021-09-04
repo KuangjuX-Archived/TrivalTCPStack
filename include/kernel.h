@@ -16,11 +16,11 @@ tju_tcp_t* established_socks[MAX_SOCK];
 
 tju_tcp_t* connect_sock;
 
-
-// 半连接队列
-struct sock_queue* syns_socks;
-// 全连接队列
-struct sock_queue* accept_socks;
+// 这里应当加入到socket中，因为每个server socket都会维护一个半连接队列和全连接队列
+// // 半连接队列
+// struct sock_queue* syns_socks;
+// // 全连接队列
+// struct sock_queue* accept_socks;
 
 
 // 收到packet时处理方法

@@ -6,6 +6,7 @@
 #include "tju_packet.h"
 // #include "kernel.h"
 #include "consts.h"
+struct sockqueue;
 
 // TCP 发送窗口
 // 注释的内容如果想用就可以用 不想用就删掉 仅仅提供思路和灵感
@@ -87,6 +88,12 @@ typedef struct tju_tcp_t {
 
 	// 超时次数
 	uint8_t timeout_counts;
+
+	// 这些域仅在server端被使用
+	// 半连接队列
+	struct sock_queue* syn_queue;
+	// 全连接队列
+	struct sock_queue* accept_queue;
 
 } tju_tcp_t;
 

@@ -1,17 +1,19 @@
-// #ifndef _TRIVIAL_EPOLL_H_
-// #define _TRIVIAL_EPOLL_H_
+#include <pthread.h>
 
-// #define MAX_EVENT_NUMS 1024
-// #define MAX_EPOLL_SIZE 1024
+typedef struct list_head {
 
-// typedef void (*udp_recv_callback)(int, struct sockaddr_in*, const char*, unsigned int);
+} list_head;
 
-// typedef struct epoll_server_t {
-//     int epoll_fd;
-//     int listen;
-//     int stop_flag;
+typedef struct rbroot {
 
-//     udp_recv_callback callback_handler;
-// } epoll_server_t;
+} rbroot;
 
-// #endif
+typedef struct epitem {
+    
+} epitem;
+
+typedef struct eventepoll {
+    pthread_mutex_t lock;
+
+    list_head rdllist;
+} eventepoll;

@@ -16,8 +16,8 @@ void tcp_stop_timer(tju_tcp_t* sock);
 ====================================================
 */
 
-extern sock_queue* syns_socks;
-extern sock_queue* accept_socks;
+// extern sock_queue* syns_socks;
+// extern sock_queue* accept_socks;
 extern tju_tcp_t* connect_sock;
 
 
@@ -53,7 +53,7 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 // 修改服务端socket的状态
                 sock->state = SYN_SENT;
                 // 加入到半连接哈希表中
-                int index = sockqueue_push(syns_socks, conn_sock);
+                int index = sockqueue_push(sock->syn_queue, conn_sock);
                 if (index < 0) {
                     printf("Fail to push syns_socks.\n");
                     return -1;
@@ -84,10 +84,10 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 int index = sock->saved_syn;
                 // 获取半连接socket
                 tju_tcp_t* conn_sock = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
-                sockqueue_remove(syns_socks, conn_sock, index);
+                sockqueue_remove(sock->syn_queue, conn_sock, index);
                 // 将半连接socket放到全连接socket中
                 conn_sock->state = ESTABLISHED;
-                sockqueue_push(accept_socks, conn_sock);
+                sockqueue_push(sock->accept_queue, conn_sock);
                 return 0;
             } else {
                 // 当flags不是ESTABLSHED时，暂时忽略

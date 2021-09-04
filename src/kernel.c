@@ -238,9 +238,9 @@ void startSimulation(){
         established_socks[index] = NULL;
         connect_sock = NULL;
     }
-    // 初始化半连接队列和全连接队列
-    sockqueue_init(&syns_socks);
-    sockqueue_init(&accept_socks);
+    // // 初始化半连接队列和全连接队列
+    // sockqueue_init(&syns_socks);
+    // sockqueue_init(&accept_socks);
 
 
     // 获取hostname 

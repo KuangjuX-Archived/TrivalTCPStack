@@ -44,13 +44,9 @@ tju_tcp_t* tcp_socket(){
     // 初始化定时器及回调函数
     tcp_init_timer(sock, tcp_write_timer_handler);
 
-    // 初始化send_buffer
-//     sock->sending_capacity = 128 * 1024;
-//     sock->sending_len = 0;
-//     sock->sending_buf = (char*)malloc(sock->sending_capacity);
-
-    // 开启监测发送缓冲区线程
-    // pthread_create(&sock->send_thread, NULL, tcp_send_stream, (void*)sock);
+    // 初始化半连接队列和全连接队列
+    sockqueue_init(&sock->syn_queue);
+    sockqueue_init(&sock->accept_queue);
 
     return sock;
 }
@@ -90,12 +86,12 @@ int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
 
     // 如果全连接队列为空，则阻塞等待
     printf("Wait connection......\n");
-    while(sockqueue_is_empty(accept_socks)){}
+    while(sockqueue_is_empty(listen_sock->accept_queue)){}
 
     tju_sock_addr local_addr, remote_addr;
     tju_tcp_t* sock = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
     // 从全连接队列中取出第一个连接socket
-    int status = sockqueue_pop(accept_socks, sock);
+    int status = sockqueue_pop(listen_sock->accept_queue, sock);
 
     if(status < 0) {
         return -1;
@@ -206,19 +202,6 @@ int tcp_send(tju_tcp_t* sock, const void *buffer, int len){
     }
     // 释放锁
     pthread_mutex_unlock(&sock->send_lock);
-
-    // tju_packet_t* send_packet = buf_to_packet(msg);
-    // if(seq < base + window_size) {
-    //     // sock->window.wnd_send->send_windows[seq % TCP_SEND_WINDOW_SIZE] = send_packet;
-    //     tju_packet_t* ptr = sock->window.wnd_send->send_windows + (seq % TCP_SEND_WINDOW_SIZE);
-    //     memcpy(ptr, send_packet, sizeof(tju_packet_t));
-    //     sendToLayer3(msg, plen);
-    // }
-    // if(base == seq) {
-    //     // 开始计时
-    //     tcp_start_timer(sock);
-    // }
-    // sock->window.wnd_send->nextseq += 1;
     
     return 0;
 }
