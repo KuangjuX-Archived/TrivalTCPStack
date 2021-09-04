@@ -152,7 +152,7 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
                 // 将本地socket状态修改为CLOS_WAIT
                 local_sock->state = CLOSE_WAIT;
                 // 向对方发送ACK
-                tcp_send_ack(local_sock);
+                tcp_send_ack(local_sock, 0);
                 
                 // 等待一段时间，继续向远程发送pakcet
                 sleep(MSL * 2);
@@ -176,7 +176,7 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
 
         case FIN_WAIT_2:
             if(flags == (FIN | ACK)) {
-                tcp_send_ack(local_sock);
+                tcp_send_ack(local_sock, 0);
                 local_sock->state = TIME_WAIT;
                 // 等待2 * MSL 时间，释放socket资源
                 sleep(2 * MSL);
@@ -241,9 +241,9 @@ void tcp_send_fin(tju_tcp_t* sock) {
     sendToLayer3(send_pkt, HEADER_LEN);
 }
 
-void tcp_send_ack(tju_tcp_t* sock) {
+void tcp_send_ack(tju_tcp_t* sock, int len) {
     // 瞎编seq和ack
-    uint32_t seq = sock->window.wnd_recv->expect_seq;
+    uint32_t seq = sock->window.wnd_recv->expect_seq + len;
     uint32_t ack = seq;
     int rwnd=TCP_RECV_BUFFER_SIZE-sock->received_len;
     char* send_pkt = create_packet_buf(
@@ -383,7 +383,7 @@ _Noreturn void* tcp_send_stream(void* arg) {
                 memcpy(ptr, buf, len);
                 char* msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 
                     DEFAULT_HEADER_LEN, plen, NO_FLAG, adv_wnd, 0, buf, len);
-                printf("send data. %d\n",adv_wnd);
+                printf("send data. %d\n" , adv_wnd);
                 sendToLayer3(msg, plen);
             }
             if(base == seq) {

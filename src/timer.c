@@ -16,20 +16,15 @@ void* tcp_check_timeout(void* arg) {
     time_t cur_time = time(NULL);
     time_t out_time = cur_time + timeout;
     // 初始化信号量
-    char* signal = (char*)malloc(10);
     while(time(NULL) < out_time) {
-        // 检查信号量
-        // 注：select方法为非阻塞读取channel，当没有读取到对应的数据，将会立刻向下执行
-        switch (chan_select(sock->rtt_timer->chan, NULL, &signal, NULL, 0, NULL)) {
-            case 0:
-                if(strcmp(signal, "interrupt")) {
-                    // 更新RTT的值
-                    tcp_ack_update_rtt(sock, time(NULL) - cur_time, 1);
-                    // 销毁channel
-                    chan_dispose(sock->rtt_timer->chan);
-                    sock->rtt_timer->chan = NULL;
-                    return NULL;
-                }
+        if (sock->interrupt_signal == 1) {
+            printf("receive interrupt signal");
+            // 更新RTT的值
+            tcp_ack_update_rtt(sock, time(NULL) - cur_time, 1);
+            // 销毁channel
+            chan_dispose(sock->rtt_timer->chan);
+            sock->rtt_timer->chan = NULL;
+            return NULL;
         }
     }
     // 此时超时，调用回调函数
@@ -48,7 +43,7 @@ void tcp_init_rtt(struct tju_tcp_t* sock) {
     sock->rtt_timer = (rtt_timer_t*)malloc(sizeof(rtt_timer_t));
     sock->rtt_timer->estimated_rtt = 1;
     sock->rtt_timer->dev_rtt = 1;
-    sock->rtt_timer->timeout = 100;
+    sock->rtt_timer->timeout = 1000;
     sock->rtt_timer->timer_thread = 0;
 }
 
@@ -111,21 +106,28 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
 
 // 开始计时，创建新线程
 void tcp_start_timer(tju_tcp_t* sock) {
+    pthread_mutex_lock(&sock->signal_lock);
+    sock->interrupt_signal = 0;
+    pthread_mutex_unlock(&sock->signal_lock);
+    printf("start timer.\n");
     // 建立无缓冲区的channel
     sock->rtt_timer->chan = chan_init(0);
-    // 这里应当至今生成新线程，异步监视是否超时
+    // 这里应当生成新线程，异步监视是否超时
     pthread_create(&sock->rtt_timer->timer_thread, NULL, tcp_check_timeout, (void*)sock);
 }
 
 // 停止计时并返回ack所花费时间
 void tcp_stop_timer(tju_tcp_t* sock) {
-    char* data = "interrupt";
-    if(sock->rtt_timer->chan != NULL) {
-        // 发送中断信号
-        chan_send(sock->rtt_timer->chan, (void*)data);
-    }
+    printf("stop timer.\n");
+    pthread_mutex_lock(&sock->signal_lock);
+    sock->interrupt_signal = 1;
+    pthread_mutex_unlock(&sock->signal_lock);
     // 等待进程结束进行同步
     pthread_join(sock->rtt_timer->timer_thread, NULL);
+
+    pthread_mutex_lock(&sock->signal_lock);
+    sock->interrupt_signal = 0;
+    pthread_mutex_unlock(&sock->signal_lock);
 }
 
 
@@ -146,7 +148,6 @@ void tcp_retransmit_timer(tju_tcp_t* sock) {
     // 打开计时器
     tcp_start_timer(sock);
     sendToLayer3(msg, plen);
-
 }
 
 // 慢启动

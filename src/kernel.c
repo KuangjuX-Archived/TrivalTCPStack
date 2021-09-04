@@ -22,9 +22,11 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
         // 此处为发送方，收到接收方传来的ACK
         // 需要检查是否有“捎带”的数据
         uint32_t seq = get_seq(pkt);
-        sock->window.wnd_send->base = seq + get_plen(pkt);
+        printf("seq: %d.\n", seq);
+        sock->window.wnd_send->base = seq + get_plen(pkt) - get_hlen(pkt);
         uint32_t base = sock->window.wnd_send->base;
         uint32_t next_seq = sock->window.wnd_send->nextseq;
+        printf("base: %d, next_seq: %d.\n", base, next_seq);
         if(base == next_seq) {
             tcp_stop_timer(sock);
         }else {
@@ -52,10 +54,9 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
         }else if(seq == expected_seq) {
             // 向对方发送ACK
             // 修改自己的expected_seq
-            tcp_send_ack(sock);
-            // sock->window.wnd_recv->expect_seq += 1;
             // 更新expected_seq
             int len = get_plen(pkt) - get_hlen(pkt);
+            tcp_send_ack(sock, len);
             sock->window.wnd_recv->expect_seq += len;
             // 继续执行，接受数据
         }else if(seq < expected_seq) {

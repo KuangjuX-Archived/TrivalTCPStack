@@ -40,13 +40,17 @@ tju_tcp_t* tcp_socket(){
     sock->window.wnd_send->send_windows = (char*)malloc(TCP_SEND_WINDOW_SIZE);
     sock->window.wnd_recv->receiver_window = (char*)malloc(TCP_RECV_WINDOW_SIZE);
     sock->window.wnd_send->window_size = TCP_SEND_WINDOW_SIZE;
-    sock->window.wnd_send->rwnd=1;
+    sock->window.wnd_send->rwnd = 1;
+
     // 初始化定时器及回调函数
     tcp_init_timer(sock, tcp_write_timer_handler);
+    pthread_mutex_init(&sock->signal_lock, NULL);
+    sock->interrupt_signal = 0;
 
     // 初始化半连接队列和全连接队列
     sockqueue_init(&sock->syn_queue);
     sockqueue_init(&sock->accept_queue);
+
 
     return sock;
 }

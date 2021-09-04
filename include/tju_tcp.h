@@ -81,7 +81,11 @@ typedef struct tju_tcp_t {
 
 	window_t window; // 发送和接受窗口
 
+	// 保存的半连接队列id
 	int saved_syn;
+
+	pthread_mutex_t signal_lock;
+	int interrupt_signal;
 
 	// 计时器逻辑
 	struct rtt_timer_t* rtt_timer;
@@ -108,7 +112,7 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt);
 
 // 传输控制位packet
 void tcp_send_fin(tju_tcp_t* sock);
-void tcp_send_ack(tju_tcp_t* sock);
+void tcp_send_ack(tju_tcp_t* sock, int len);
 
 void tcp_update_expected_seq(tju_tcp_t* sock, char* pkt);
 
