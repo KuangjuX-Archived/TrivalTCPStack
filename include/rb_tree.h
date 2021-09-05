@@ -1,8 +1,7 @@
 #ifndef	_TRIVIAL_RBTREE_H_
 #define	_TRIVIAL_RBTREE_H_
 
-#include <linux/kernel.h>
-#include <linux/stddef.h>
+
 #include <stdio.h>
 
 struct rb_node
