@@ -4,8 +4,8 @@ import pdb
 import socket
 from fabric import Connection
 
-start_server_cmd = 'tmux new -s pytest_server -d "bash -c /vagrant/tju_tcp/test/receiver > /vagrant/tju_tcp/test/server.log 2>&1"'
-start_client_cmd = 'tmux new -s pytest_client -d "bash -c /vagrant/tju_tcp/test/test_client > /vagrant/tju_tcp/test/client.log 2>&1"'
+start_server_cmd = 'tmux new -s pytest_server -d "bash -c /tju_tcp/test/receiver > /tju_tcp/test/server.log 2>&1"'
+start_client_cmd = 'tmux new -s pytest_client -d "bash -c /tju_tcp/test/test_client > /tju_tcp/test/client.log 2>&1"'
 stop_server_cmd = 'tmux kill-session -t pytest_server'
 stop_client_cmd = 'tmux kill-session -t pytest_client'
 
@@ -18,11 +18,11 @@ def main():
     print("====================================================================")
     print("============================开始测试================================")
     print("====================================================================")
-    with Connection(host="10.0.0.1", user='vagrant', connect_kwargs={'password':'vagrant'}) as conn:
+    with Connection(host="10.0.0.3", user='vagrant', connect_kwargs={'password':'vagrant'}) as conn:
 
         print("[自动测试] 编译提交源码")
-        print("> cd /vagrant/tju_tcp && make")
-        rst = conn.run("cd /vagrant/tju_tcp && make", timeout=5)
+        print("> cd /tju_tcp && make")
+        rst = conn.run("cd /tju_tcp && make", timeout=5)
         if (rst.failed):
             print('[自动测试] 编译提交源码错误 停止测试')
             print('{"scores": {"establish_connection": 0}}')
@@ -31,8 +31,8 @@ def main():
         
 
         print("[自动测试] 编译测试源码")
-        print("> cd /vagrant/tju_tcp/test && make")
-        rst = conn.run("cd /vagrant/tju_tcp/test && make", timeout=5)
+        print("> cd /tju_tcp/test && make")
+        rst = conn.run("cd /tju_tcp/test && make", timeout=5)
         if (rst.failed):
             print('[自动测试] 编译测试源码错误 停止测试')
             print('{"scores": {"establish_connection": 0}}')
@@ -62,8 +62,8 @@ def main():
         except Exception as e: 
             pass 
 
-        cat_log_server_cmd = 'cat /vagrant/tju_tcp/test/server.log'
-        cat_log_client_cmd = 'cat /vagrant/tju_tcp/test/client.log'
+        cat_log_server_cmd = 'cat /tju_tcp/test/server.log'
+        cat_log_client_cmd = 'cat /tju_tcp/test/client.log'
 
         print("[自动测试] 打印文件里面的日志")
         print("====================================================================")
