@@ -40,6 +40,10 @@
 #define ACK (1<<4)
 #define URG (1<<5)
 
+// #define SYN (1<<3)
+// #define ACK (1<<2)
+// #define FIN (1<<1)
+
 // TCP 拥塞控制状态
 #define SLOW_START 0
 #define CONGESTION_AVOIDANCE 1
