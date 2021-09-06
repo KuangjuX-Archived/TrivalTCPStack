@@ -55,6 +55,7 @@ void onTCPPocketTest(char* pkt){
 
     // 获取 TCP包的 标志位
     int syn_flag=0, ack_flag=0, fin_flag=0;
+    printf("flag: %d.\n", get_flags(pkt));
     if ( (get_flags(pkt)>>3) & 1 == 1 ){ // SYN 是第四位
         syn_flag = 1;
     }
@@ -62,7 +63,8 @@ void onTCPPocketTest(char* pkt){
         ack_flag = 1;
     }
     if ( (get_flags(pkt)>>1) & 1 == 1 ){ // SYN 是第二位
-        fin_flag = 1;
+        // fin_flag = 1;
+        syn_flag = 1;
     }
 
     if(STATE==0){

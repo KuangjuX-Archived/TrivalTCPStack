@@ -44,6 +44,14 @@ client: $(OBJS)
 	@$(CC) $(FLAGS) ./src/client.c -o $(BUILD_DIR)/client $(OBJS)
 	@$(BUILD_DIR)/client
 
+test_receiver: $(OBJS)
+	@$(CC) $(FLAGS) ./test/test_receiver.c -o $(BUILD_DIR)/test_receiver $(OBJS)
+	@$(BUILD_DIR)/test_receiver
+
+test_client: $(OBJS)
+	@$(CC) $(FLAGS) ./test/test_client.c -o $(BUILD_DIR)/test_client $(OBJS)
+	@$(BUILD_DIR)/test_client
+
 
 
 	
