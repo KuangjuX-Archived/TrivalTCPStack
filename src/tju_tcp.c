@@ -399,11 +399,13 @@ _Noreturn void* tcp_send_stream(void* arg) {
         if(sock->sending_len > 0) {
             int improve_flag=improve_send_wnd(sock);
             if(!improve_flag) continue;
+            int wnd_size=min_among_3(sock->cwnd,sock->window.wnd_send->rwnd,sock->sending_len);
+
             pthread_mutex_lock(&sock->send_lock);
             int window_left = sock->window.wnd_send->window_size 
             - (sock->window.wnd_send->nextseq - sock->window.wnd_send->base);
 
-            int len = min(sock->sending_len, window_left);
+            int len = min(wnd_size, window_left);
             char* buf = (char*)malloc(len);
             memcpy(buf, sock->sending_buf, len);
 
@@ -429,7 +431,7 @@ _Noreturn void* tcp_send_stream(void* arg) {
                 memcpy(ptr, buf, len);
                 char* msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 
                     DEFAULT_HEADER_LEN, plen, NO_FLAG, adv_wnd, 0, buf, len);
-                printf("send data. %d\n" , adv_wnd);
+                printf("send data. %d \n" , adv_wnd);
                 sendToLayer3(msg, plen);
             }
             if(base == seq) {
@@ -474,7 +476,6 @@ void load_data_to_sending_buffer(tju_tcp_t *sock, const void *buffer, int len) {
 int improve_send_wnd(tju_tcp_t* sock){
     float rwnd= (float)sock->window.wnd_send->rwnd;
     float data_on_way=(float)sock->window.wnd_send->nextseq-sock->window.wnd_send->base;
-    printf("rwnd:%f\n t:%f\n",rwnd,(rwnd-data_on_way)/rwnd);
     if((rwnd-data_on_way)/rwnd<IMPROVED_WINDOW_THRESHOLD){
         return 0;
     }else{

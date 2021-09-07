@@ -40,11 +40,6 @@
 #define ACK (1<<4)
 #define URG (1<<5)
 
-// TCP 拥塞控制状态
-#define SLOW_START 0
-#define CONGESTION_AVOIDANCE 1
-#define FAST_RECOVERY 2
-
 // TCP 接受窗口大小
 #define TCP_RECVWN_SIZE 32 * MAX_DLEN // 比如最多放32个满载数据包
 #define TCP_RECV_WINDOW_SIZE 128 * MAX_DLEN
@@ -95,5 +90,18 @@
 #define FIN_FLAG_MASK 0x2
 
 #define HEADER_LEN 22
+
+/*
+  =====================================================
+  ===================拥塞控制相关=========================
+  =====================================================
+*/
+
+#define IW 3*MAX_LEN
+#define SMSS 1*MAX_LEN
+// TCP 拥塞控制状态
+#define SLOW_START 0
+#define CONGESTION_AVOIDANCE 1
+#define FAST_RECOVERY 2
 
 #endif

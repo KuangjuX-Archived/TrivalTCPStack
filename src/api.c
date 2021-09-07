@@ -40,7 +40,7 @@ tju_tcp_t* tcp_socket(){
     sock->window.wnd_send->send_windows = (char*)malloc(TCP_SEND_WINDOW_SIZE);
     sock->window.wnd_recv->receiver_window = (char*)malloc(TCP_RECV_WINDOW_SIZE);
     sock->window.wnd_send->window_size = TCP_SEND_WINDOW_SIZE;
-    sock->window.wnd_send->rwnd = 1;
+    sock->window.wnd_send->rwnd = 1*SMSS;
 
     // 初始化定时器及回调函数
     tcp_init_timer(sock, tcp_write_timer_handler);
@@ -51,6 +51,10 @@ tju_tcp_t* tcp_socket(){
     sockqueue_init(&sock->syn_queue);
     sockqueue_init(&sock->accept_queue);
 
+    //初始化拥塞控制相关
+    sock->ssthresh=IW;
+    sock->cwnd=SMSS;
+    sock->con_status=SLOW_START;
 
     return sock;
 }
@@ -157,6 +161,7 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
 
     // 创建客户端socket并将其加入到哈希表中
     // 这里发送SYN_SENT packet向服务端发送请求
+    uint16_t adv_wnd=TCP_RECV_BUFFER_SIZE-sock->received_len;
     char* send_pkt = create_packet_buf(
         local_addr.port,
         target_addr.port,
@@ -165,7 +170,7 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
         HEADER_LEN,
         HEADER_LEN,
         SYN,
-        0,
+        adv_wnd,
         0,
         NULL,
         0

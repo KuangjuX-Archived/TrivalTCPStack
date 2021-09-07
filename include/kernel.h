@@ -65,4 +65,6 @@ int BACKEND_UDPSOCKET_ID;
 */
 int cal_hash(uint32_t local_ip, uint16_t local_port, uint32_t remote_ip, uint16_t remote_port);
 
+void handle_success_ack(tju_tcp_t* sock);
+
 #endif

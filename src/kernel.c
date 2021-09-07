@@ -17,7 +17,9 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
     uint32_t seq = get_seq(pkt);
     uint32_t adv_wnd= get_advertised_window(pkt);
     sock->window.wnd_send->rwnd=adv_wnd;
+
     if(flag == ACK) {
+        handle_success_ack(sock);
         printf("receive ACK.\n");
         // 此处为发送方，收到接收方传来的ACK
         // 需要检查是否有“捎带”的数据
@@ -286,4 +288,25 @@ void startSimulation(){
 int cal_hash(uint32_t local_ip, uint16_t local_port, uint32_t remote_ip, uint16_t remote_port){
     // 实际上肯定不是这么算的
     return ((int)local_ip+(int)local_port+(int)remote_ip+(int)remote_port)%MAX_SOCK;
+}
+
+/*
+=======================================================
+====================拥塞控制相关函数===================
+=======================================================
+*/
+
+void handle_success_ack(tju_tcp_t* sock){
+    if(sock->con_status==SLOW_START){
+        sock->cwnd=sock->cwnd+SMSS;
+        if(sock->cwnd>sock->ssthresh){
+            sock->con_status=CONGESTION_AVOIDANCE;
+        }
+    }else if(sock->con_status==CONGESTION_AVOIDANCE){
+         sock->cwnd=sock->cwnd+SMSS*(SMSS/sock->cwnd);
+    }else if(sock->con_status==FAST_RECOVERY){
+        sock->cwnd=sock->cwnd+SMSS;
+    }else{
+        printf("handle_success_ack 出现未定义行为\n");
+    }
 }

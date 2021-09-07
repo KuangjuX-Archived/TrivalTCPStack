@@ -98,6 +98,7 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
                 tcp_outlimit_retransmit(sock);
             }else {
                 // 重传分组
+                handle_loss_ack(sock);
                 sock->timeout_counts += 1;
                 tcp_retransmit_timer(sock);
             }
@@ -153,9 +154,25 @@ void tcp_retransmit_timer(tju_tcp_t* sock) {
     sendToLayer3(msg, plen);
 }
 
-// 慢启动
-void tcp_entry_loss(tju_tcp_t* sock) {
-
+void handle_loss_ack(tju_tcp_t* sock){
+    int timeout_counts=sock->timeout_counts%4;
+    if(sock->con_status==SLOW_START){
+        sock->ssthresh=(sock->cwnd+1)/2;
+        sock->cwnd=1*SMSS;
+        if(sock->cwnd>sock->ssthresh){
+            sock->con_status=CONGESTION_AVOIDANCE;
+        }
+    }else if(sock->con_status==CONGESTION_AVOIDANCE&&timeout_counts==3){
+        sock->ssthresh=(sock->cwnd+1)/2;
+        sock->cwnd=sock->ssthresh+3*SMSS;
+        sock->con_status=FAST_RECOVERY;
+    }else if(sock->con_status==FAST_RECOVERY){
+        sock->ssthresh=(sock->cwnd+1)/2;
+        sock->cwnd=1;
+        sock->con_status=SLOW_START;
+    }else{
+        printf("不存在相应状态\n");
+    }
 }
 
 // 重传次数太多，此时应当主动关闭连接

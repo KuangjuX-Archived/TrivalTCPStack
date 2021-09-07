@@ -98,6 +98,10 @@ typedef struct tju_tcp_t {
 	struct sock_queue* syn_queue;
 	// 全连接队列
 	struct sock_queue* accept_queue;
+    // 拥塞控制相关
+    int con_status;
+    int cwnd;
+    int ssthresh;
 
 } tju_tcp_t;
 
