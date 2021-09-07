@@ -40,8 +40,8 @@ And then we can run our container by static ip address and bind this project in 
 **NOTICE!** Replace {project path on your host} by your path:    
 
 ```shell
-sudo docker run -itd --name server --net mynetwork --ip 10.0.0.3 --hostname server -v {project path on your host}:/tjutcp tcp /bin/bash
-sudo docker run -itd --name client --net mynetwork --ip 10.0.0.2 --hostname client -v {project path on your host}:/tjutcp tcp /bin/bash
+sudo docker run -itd -p 22 --name server --net mynetwork --ip 10.0.0.3 --hostname server -v {project path on your host}:/tjutcp tcp /bin/bash
+sudo docker run -itd -p 22 --name client --net mynetwork --ip 10.0.0.2 --hostname client -v {project path on your host}:/tjutcp tcp /bin/bash
 ```
 
 The following commands could attach you in to each container:

@@ -18,7 +18,7 @@ def main():
     print("====================================================================")
     print("============================开始测试================================")
     print("====================================================================")
-    with Connection(host="10.0.0.3", user='vagrant', connect_kwargs={'password':'vagrant'}) as conn:
+    with Connection(host="10.0.0.3", user='root', connect_kwargs={'password':''}) as conn:
 
         print("[自动测试] 编译提交源码")
         print("> cd /tju_tcp && make")

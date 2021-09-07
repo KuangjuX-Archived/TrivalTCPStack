@@ -55,15 +55,20 @@ void onTCPPocketTest(char* pkt){
 
     // 获取 TCP包的 标志位
     int syn_flag=0, ack_flag=0, fin_flag=0;
-    if ( (get_flags(pkt)>>3) & 1 == 1 ){ // SYN 是第四位
+    printf("flag: %d.\n", get_flags(pkt));
+    if ( (get_flags(pkt)>>1) & 1 == 1 ){ // SYN 是第四位
         syn_flag = 1;
     }
-    if ( (get_flags(pkt)>>2) & 1 == 1 ){ // ACK 是第三位
+    if ( (get_flags(pkt)>>4) & 1 == 1 ){ // ACK 是第三位
         ack_flag = 1;
     }
-    if ( (get_flags(pkt)>>1) & 1 == 1 ){ // SYN 是第二位
-        fin_flag = 1;
+    if ( (get_flags(pkt)) & 1 == 1 ){ // FIN 是第二位
+        syn_flag = 1;
     }
+    // if ( (get_flags(pkt)>>4) & 1 == 1 ){ // SYN 是第二位
+    //     // fin_flag = 1;
+    //     ack_flag = 1;
+    // }
 
     if(STATE==0){
         int success=1;
@@ -97,7 +102,7 @@ void onTCPPocketTest(char* pkt){
             uint32_t send_ack_val = pkt_seq + 1;
             msg = create_packet_buf((uint16_t)1234, pkt_src, 
                                     seq, send_ack_val, 
-                                    DEFAULT_HEADER_LEN, plen, SYN_FLAG_MASK|ACK_FLAG_MASK, 32, 0, NULL, 0);
+                                    DEFAULT_HEADER_LEN, plen, SYN|ACK, 32, 0, NULL, 0);
             printf("[服务端] 发送SYNACK 等待客户端第三次握手的ACK\n");
             sendToLayer3Test(msg, plen);
             free(msg);

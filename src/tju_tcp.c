@@ -3,7 +3,6 @@
 #include "tju_tcp.h"
 #include "sockqueue.h"
 #include "utils.h"
-#include <pthread.h>
 
 void sendToLayer3(char* packet_buf, int packet_len);
 int cal_hash(uint32_t local_ip, uint16_t local_port, uint32_t remote_ip, uint16_t remote_port);
@@ -114,8 +113,6 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
                 // 随便编的seq
                 int seq = get_seq(pkt) + 1;
                 int ack = get_seq(pkt) + 1;
-                // 头部长度
-                int len = 20;
                 // 构建packet发送给服务端
                 uint16_t adv_wnd=TCP_SEND_BUFFER_SIZE-sock->received_len;
                 char* send_pkt = create_packet_buf(
@@ -309,7 +306,7 @@ void tcp_send_ack(tju_tcp_t* sock, int len) {
 }
 
 void tcp_update_expected_seq(tju_tcp_t* sock, char* pkt) {
-    int expected_seq = get_seq(pkt) + get_plen(pkt);
+    int expected_seq = get_seq(pkt) + get_plen(pkt) - get_hlen(pkt);
     sock->window.wnd_recv->expect_seq = expected_seq;
 }
 
