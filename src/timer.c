@@ -14,16 +14,12 @@ void* tcp_check_timeout(void* arg) {
     tju_tcp_t* sock = (tju_tcp_t*)arg;
     float timeout = sock->rtt_timer->timeout;
     time_t cur_time = time(NULL);
-    time_t out_time = cur_time + timeout;
     // 初始化信号量
-    while(time(NULL) < out_time) {
+    while(difftime(time(NULL), cur_time) < timeout) {
         if (sock->interrupt_signal == 1) {
-            printf("receive interrupt signal.\n");
+            printf("[Timer] 接收到中断信号.\n");
             // 更新RTT的值
-            tcp_ack_update_rtt(sock, time(NULL) - cur_time, 1);
-            // 销毁channel
-            chan_dispose(sock->rtt_timer->chan);
-            sock->rtt_timer->chan = NULL;
+            tcp_ack_update_rtt(sock, time(NULL) - cur_time, 1000);
             return NULL;
         }else {
             // 休息一会，防止不断轮询导致CPU负载过重
@@ -44,8 +40,8 @@ void tcp_init_timer(
 
 void tcp_init_rtt(struct tju_tcp_t* sock) {
     sock->rtt_timer = (rtt_timer_t*)malloc(sizeof(rtt_timer_t));
-    sock->rtt_timer->estimated_rtt = 1;
-    sock->rtt_timer->dev_rtt = 1;
+    sock->rtt_timer->estimated_rtt = 1000;
+    sock->rtt_timer->dev_rtt = 1000;
     sock->rtt_timer->timeout = 1000;
     sock->rtt_timer->timer_thread = 0;
 }
@@ -83,7 +79,7 @@ int tcp_ack_update_rtt(tju_tcp_t* sock, float seq_rtt_us, float sack_rtt_us) {
 
 // 当计时器超时时的回调函数
 void tcp_write_timer_handler(tju_tcp_t* sock) {
-    printf("timeout.\n");
+    printf("[Timer] 超时了！\n");
     // 这里需要针对socket的状态进行不同的操作
     switch(sock->state) {
         case SYN_SENT:
@@ -94,7 +90,7 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
             // 超时重传，这里或许需要判断一下重传的次数，若重传次数过多应该关闭连接
             if(sock->timeout_counts > RETRANSMIT_LIMIT) {
                 // 重传次数超限，关闭连接
-                printf("重传次数超限，关闭连接.\n");
+                printf("[超时处理] 重传次数超限，关闭连接.\n");
                 tcp_outlimit_retransmit(sock);
             }else {
                 // 重传分组
@@ -103,7 +99,7 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
                 tcp_retransmit_timer(sock);
             }
         default:
-            printf("Unresolved status.\n");
+            printf("[超时处理] 未解决的状态.\n");
     }
 }
 
@@ -113,16 +109,14 @@ void tcp_start_timer(tju_tcp_t* sock) {
     pthread_mutex_lock(&sock->signal_lock);
     sock->interrupt_signal = 0;
     pthread_mutex_unlock(&sock->signal_lock);
-    printf("start timer.\n");
-    // 建立无缓冲区的channel
-    sock->rtt_timer->chan = chan_init(0);
+    printf("[Timer] 开始计时.\n");
     // 这里应当生成新线程，异步监视是否超时
     pthread_create(&sock->rtt_timer->timer_thread, NULL, tcp_check_timeout, (void*)sock);
 }
 
 // 停止计时并返回ack所花费时间
 void tcp_stop_timer(tju_tcp_t* sock) {
-    printf("stop timer.\n");
+    printf("[Timer] 结束计时.\n");
     pthread_mutex_lock(&sock->signal_lock);
     sock->interrupt_signal = 1;
     pthread_mutex_unlock(&sock->signal_lock);

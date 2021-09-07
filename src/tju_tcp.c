@@ -100,7 +100,7 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 return -1;
             }
         default:         
-            printf("Unresolved status: %d\n", flags);
+            printf("[三次握手] 服务端： 未解决的的标志位 %s\n", flags);
             return -1;
     }
 }
@@ -142,7 +142,7 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
                 return -1;
             }
         default:
-            printf("Unresolved status: %d\n", flags);
+            printf("[三次握手] 客户端： 未解决的的标志位 %s\n", flags);
             return -1;
     }
 }
@@ -434,7 +434,7 @@ _Noreturn void* tcp_send_stream(void* arg) {
                 memcpy(ptr, buf, len);
                 char* msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 
                     DEFAULT_HEADER_LEN, plen, NO_FLAG, adv_wnd, 0, buf, len);
-                printf("send data. %d \n" , adv_wnd);
+                printf("[发送数据] 窗口大小: %d\n" , adv_wnd);
                 sendToLayer3(msg, plen);
             }
             if(base == seq) {

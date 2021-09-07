@@ -11,7 +11,6 @@ typedef struct rtt_timer_t {
     float dev_rtt;
     float timeout;
     void (*callback)(tju_tcp_t* sock);
-    chan_t* chan;
     pthread_t timer_thread;
 } rtt_timer_t;
 
