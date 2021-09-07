@@ -9,6 +9,8 @@ int cal_hash(uint32_t local_ip, uint16_t local_port, uint32_t remote_ip, uint16_
 
 void tcp_start_timer(tju_tcp_t* sock);
 void tcp_stop_timer(tju_tcp_t* sock);
+
+const int socket_size = sizeof(tju_tcp_t);
 /*
 ====================================================
 ===========以下为辅助函数的实现，仅在该模块被调用=========
@@ -26,10 +28,10 @@ extern tju_tcp_t* connect_sock;
 ======================================================
 */
 
+// 这里传输的应该是建立连接的socket
 int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
     uint8_t flags = get_flags(pkt);
     sock->window.wnd_send->rwnd= get_advertised_window(pkt);
-    // 通过socket状态进行处理
     switch (sock->state) {
         case CLOSED:
             // 关闭状态，不能接受任何消息
@@ -38,6 +40,7 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
         case LISTEN:
             // 判断packet flags 是否为 SYN_SENT 并判断ack的值
             if (flags == SYN) {
+                printf("[Debug] Server receive SYN request.\n");
                 // 第二次握手，服务端修改自己的状态，
                 // 并且发送 SYN_RECV 标志的pakcet，
                 // 加入到半连接哈希表中（暂时不考虑重置状态）                
@@ -76,7 +79,8 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 tcp_stop_timer(sock);
                 // 第三次握手，服务端发送ACK报文， 服务端将自己的socket变为ESTABLISHED，
                 // 从syns_socks取出对应的socket并加入到accept_socks中
-                sock->state = ESTABLISHED;
+                // 处理完一个socket的三次握手过程，将socket的状态改为LISTEN
+                sock->state = LISTEN;
 
                 // 更新expected_seq
                 tcp_update_expected_seq(sock, pkt);
@@ -107,6 +111,7 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
     switch(flags) {
         case (SYN | ACK):
             if(sock->state == SYN_SENT) {
+                printf("[Debug] Client receive SYN response.\n");
                 tcp_stop_timer(sock);
                 // client首次收到ACK， 更新窗口expected_seq
                 tcp_update_expected_seq(sock, pkt);
@@ -143,6 +148,7 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
 }
 
 // 事实上除了通过判断recv_pkt的flags时也需要检查ack，这里暂时没有实现
+// 此时传输的local_sock 为 ESTABLISHED sock
 int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
     uint8_t flags = get_flags(recv_pkt);
     switch(local_sock->state) {
@@ -181,7 +187,7 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
                 // 等待2 * MSL 时间，释放socket资源
                 sleep(2 * MSL);
                 free(local_sock);
-                connect_sock = NULL;
+                // connect_sock = NULL;
                 printf("CLOSED.\n");
                 return 0;
             }else {
