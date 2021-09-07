@@ -155,7 +155,7 @@ int onTCPPocket(char* pkt){
     }else if(
         !tcp_manager->is_server && 
         connect_sock != NULL &&
-        (is_fin(pkt) || connect_sock->state != ESTABLISHED)
+        (is_fin(pkt) || (connect_sock->state != ESTABLISHED && connect_sock->state != SYN_SENT))
         ) {
             return tcp_state_close(connect_sock, pkt);
     }else if(tcp_manager->is_server && listen_sock->established_queue[hashval] != NULL) {
