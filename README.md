@@ -62,7 +62,7 @@ execute `make server` in server container and execute `make client` in client co
 - [x] System API: bind, listen, accept, connect, recv, send, close
 - [x] Reliable Transmission
 - [x] Flow Control
-- [ ] Congestion Control
+- [x] Congestion Control
 
 ## Differnes
 We use `10.0.0.3` as server's ip address instead of `10.0.0.1` because this address is reported occupied.
