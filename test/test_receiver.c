@@ -1,4 +1,6 @@
 #include "tju_tcp.h"
+#include "consts.h"
+#include "api.h"
 #include <string.h>
 
 int TEST_BACKEND_UDPSOCKET_ID;

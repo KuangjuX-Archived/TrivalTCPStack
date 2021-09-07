@@ -1,10 +1,8 @@
 #ifndef _TJU_TCP_H_
 #define _TJU_TCP_H_
 
-// #include "global.h"
 
 #include "tju_packet.h"
-// #include "kernel.h"
 #include "consts.h"
 struct sockqueue;
 
@@ -98,12 +96,16 @@ typedef struct tju_tcp_t {
 	struct sock_queue* syn_queue;
 	// 全连接队列
 	struct sock_queue* accept_queue;
+	// 已建立连接队列
+	struct tju_tcp_t* established_queue[MAX_SOCK_SIZE];
+
     // 拥塞控制相关
     int con_status;
     int cwnd;
     int ssthresh;
 
 } tju_tcp_t;
+
 
 // 服务端状态处理
 int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr);

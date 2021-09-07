@@ -18,16 +18,23 @@ int main(int argc, char **argv) {
 
     // sleep(3);
     // printf("send packet.\n");
-    tcp_send(my_socket, "hello world", 12);
+    // tcp_send(my_socket, "hello world", 12);
 
-    char buf[2021];
-    tcp_recv(my_socket, (void*)buf, 12);
-    printf("client recv1 %s\n", buf);
+    // char buf[2021];
+    // tcp_recv(my_socket, (void*)buf, 12);
+    // printf("client recv1 %s\n", buf);
 
-    tcp_send(my_socket, "hello tju", 10);
-    tcp_recv(my_socket, (void*)buf, 10);
-    printf("client recv2 %s\n", buf);
-//    tcp_close(my_socket);
+    // tcp_send(my_socket, "hello tju", 10);
+    // tcp_recv(my_socket, (void*)buf, 10);
+    // printf("client recv2 %s\n", buf);
+    // tcp_close(my_socket);
+    for(int i = 10; i < 99; i++) {
+        char* msg = (char*)malloc(7);
+        sprintf(msg, "echo %d", i);
+        printf("msg: %s.\n", msg);
+        tcp_send(my_socket, msg, 7);
+        sleep(1);
+    }
     while(TRUE){}
     return EXIT_SUCCESS;
 }

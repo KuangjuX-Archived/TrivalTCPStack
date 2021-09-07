@@ -1,9 +1,9 @@
 #include "api.h"
 #include "timer.h"
-#include "kernel.h"
 #include "sockqueue.h"
+#include "tcp_manager.h"
 
-_Noreturn void* tcp_send_stream(void* arg);
+void* tcp_send_stream(void* arg);
 /*
 =======================================================
 ====================系统调用API函数如下===================
@@ -40,7 +40,7 @@ tju_tcp_t* tcp_socket(){
     sock->window.wnd_send->send_windows = (char*)malloc(TCP_SEND_WINDOW_SIZE);
     sock->window.wnd_recv->receiver_window = (char*)malloc(TCP_RECV_WINDOW_SIZE);
     sock->window.wnd_send->window_size = TCP_SEND_WINDOW_SIZE;
-    sock->window.wnd_send->rwnd = 1*SMSS;
+    sock->window.wnd_send->rwnd = 1 * SMSS;
 
     // 初始化定时器及回调函数
     tcp_init_timer(sock, tcp_write_timer_handler);
@@ -55,6 +55,12 @@ tju_tcp_t* tcp_socket(){
     sock->ssthresh=IW;
     sock->cwnd=SMSS;
     sock->con_status=SLOW_START;
+
+    // 初始化建立连接队列
+    for(int i = 0; i < MAX_SOCK_SIZE; i++) {
+        sock->established_queue[i] = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
+        sock->established_queue[i] = NULL;
+    }
 
     return sock;
 }
@@ -75,7 +81,16 @@ int tcp_bind(tju_tcp_t* sock, tju_sock_addr bind_addr) {
 int tcp_listen(tju_tcp_t* sock){
     sock->state = LISTEN;
     int hashval = cal_hash(sock->bind_addr.ip, sock->bind_addr.port, 0, 0);
-    listen_socks[hashval] = sock;
+    // listen_socks[hashval] = sock;
+    // 获取tcp_manager并且将socket存储入监听队列中
+    tcp_manager_t* tcp_manager = get_tcp_manager();
+    tcp_manager->listen_queue[hashval] = sock;
+    for(int i = 0; i < MAX_SOCK_SIZE; i++) {
+        sock->established_queue[i] = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
+        sock->established_queue[i] = NULL;
+    }
+    // 更新当前tcp状态
+    tcp_manager->is_server = 1;
     return 0;
 }
 
@@ -122,7 +137,8 @@ int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
         remote_addr.ip, 
         remote_addr.port
     );
-    established_socks[hashval] = conn_sock;
+    // established_socks[hashval] = conn_sock;
+    listen_sock->established_queue[hashval] = conn_sock;
     conn_sock->window.wnd_recv->expect_seq = 0;
     conn_sock->window.wnd_send->base = 0;
     conn_sock->window.wnd_send->nextseq = 0;
@@ -152,16 +168,20 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
     // 修改socket的状态
     sock->state = SYN_SENT;
 
-    // 将待连接socket储存起来
-    connect_sock = sock;
-
     // 初始化ack和seq
     uint32_t ack = 0;
     uint32_t seq = 0;
 
+    // 修改tcp_manager的状态
+    tcp_manager_t* tcp_manager = get_tcp_manager();
+    tcp_manager->is_server = 0;
+    // 将待连接socket储存起来
+    int hashval = cal_hash(local_addr.ip, local_addr.port, target_addr.ip, target_addr.port);
+    tcp_manager->connect_sock[hashval] = sock;
+
     // 创建客户端socket并将其加入到哈希表中
     // 这里发送SYN_SENT packet向服务端发送请求
-    uint16_t adv_wnd=TCP_RECV_BUFFER_SIZE-sock->received_len;
+    uint16_t adv_wnd = TCP_RECV_BUFFER_SIZE-sock->received_len;
     char* send_pkt = create_packet_buf(
         local_addr.port,
         target_addr.port,
@@ -184,13 +204,14 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
     pthread_create(&sock->send_thread, NULL, tcp_send_stream, (void*)sock);
 
     // 将连接后的socket放入哈希表中
-    int hashval = cal_hash(
+    hashval = cal_hash(
         local_addr.ip, 
         local_addr.port, 
         sock->established_remote_addr.ip, 
         sock->established_remote_addr.port
     );
-    established_socks[hashval] = sock;
+    // established_socks[hashval] = sock;
+    sock->established_queue[hashval] = sock;
     sock->window.wnd_recv->expect_seq = 0;
     sock->window.wnd_send->base = 0;
     sock->window.wnd_send->nextseq = 0;
@@ -261,5 +282,5 @@ int tcp_close (tju_tcp_t* sock) {
     // 发送FIN分组
     tcp_send_fin(sock);
     // 这里暂时只检查客户端的状态
-    while(connect_sock != NULL) {}
+    while(sock->state != CLOSED) {}
 }

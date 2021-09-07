@@ -66,6 +66,9 @@
 // the max size of thread pool
 #define THREAD_POOL_SIZE 16
 
+// 最大socket值
+#define MAX_SOCK_SIZE 1024
+
 /*
 =========================================================
 ========================timer常量=========================
