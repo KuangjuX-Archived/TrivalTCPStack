@@ -31,9 +31,9 @@ int main(int argc, char **argv) {
     for(int i = 10; i < 99; i++) {
         char* msg = (char*)malloc(7);
         sprintf(msg, "echo %d", i);
-        printf("msg: %s.\n", msg);
+        printf("[发送消息] %s.\n", msg);
         tcp_send(my_socket, msg, 7);
-        sleep(1);
+        // sleep(1);
     }
     while(TRUE){}
     return EXIT_SUCCESS;

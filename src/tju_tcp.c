@@ -97,7 +97,7 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 return -1;
             }
         default:         
-            printf("[三次握手] 服务端： 未解决的的标志位 %s\n", flags);
+            printf("[三次握手] 服务端： 未解决的的标志位.\n");
             return -1;
     }
 }
@@ -139,7 +139,7 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
                 return -1;
             }
         default:
-            printf("[三次握手] 客户端： 未解决的的标志位 %s\n", flags);
+            printf("[三次握手] 客户端： 未解决的的标志位.\n");
             return -1;
     }
 }
@@ -163,7 +163,7 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
                 tcp_send_fin(local_sock);
                 return 0;
             }else {
-                printf("ESTABLISHED flags: %d.\n",flags);
+                printf("[客户端] 未解决的标志位.\n");
                 return -1;
             }
 

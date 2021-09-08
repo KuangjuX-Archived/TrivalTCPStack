@@ -12,6 +12,8 @@ typedef struct rtt_timer_t {
     float timeout;
     void (*callback)(tju_tcp_t* sock);
     pthread_t timer_thread;
+    int started;
+    pthread_mutex_t timer_lock;
 } rtt_timer_t;
 
 void tcp_init_timer(tju_tcp_t* sock, void (*retransmit_handler)(unsigned long));
@@ -20,11 +22,11 @@ void tcp_set_estimator(tju_tcp_t* sock, float mrtt_us);
 void tcp_bound_rto(tju_tcp_t* sock);
 void tcp_set_rto(tju_tcp_t* sock);
 int tcp_ack_update_rtt(tju_tcp_t* sock, float seq_rtt_us, float sack_rtt_us);
-
 void tcp_start_timer(tju_tcp_t* sock);
 void tcp_stop_timer(tju_tcp_t* sock);
-
 void tcp_write_timer_handler(tju_tcp_t* sock);
+void tcp_retransmit_timer(tju_tcp_t* sock);
 void tcp_outlimit_retransmit(tju_tcp_t* sock);
+void handle_loss_ack(tju_tcp_t* sock);
 
 #endif

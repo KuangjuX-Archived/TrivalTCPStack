@@ -57,7 +57,7 @@ int main(int argc, char **argv) {
     // tcp_send(conn_sock, (void*)buf, 10);
     for(int i = 10; i < 99; i++) {
         tcp_recv(conn_sock, buf, 7);
-        printf("[Receive] %s\n", buf);
+        printf("[接收消息] %s\n", buf);
     }
     while(TRUE){}
 

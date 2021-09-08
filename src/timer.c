@@ -36,6 +36,8 @@ void tcp_init_timer(
 ) {
     tcp_init_rtt(sock);
     sock->rtt_timer->callback = retransmit_handler;
+    sock->rtt_timer->started = 0;
+    pthread_mutex_init(&sock->rtt_timer->timer_lock, NULL);
 }
 
 void tcp_init_rtt(struct tju_tcp_t* sock) {
@@ -106,6 +108,15 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
 
 // 开始计时，创建新线程
 void tcp_start_timer(tju_tcp_t* sock) {
+    // 当计时器仍在运行时，我们需要首先关闭计时器，再重新开启计时器
+    if(sock->rtt_timer->started == 1) {
+        printf("[Timer] 计时器已经开启，不能重复开启.\n");
+        // return;
+        tcp_stop_timer(sock);
+    }
+    pthread_mutex_lock(&sock->rtt_timer->timer_lock);
+    sock->rtt_timer->started = 1;
+    pthread_mutex_unlock(&sock->rtt_timer->timer_lock);
     pthread_mutex_lock(&sock->signal_lock);
     sock->interrupt_signal = 0;
     pthread_mutex_unlock(&sock->signal_lock);
@@ -116,16 +127,20 @@ void tcp_start_timer(tju_tcp_t* sock) {
 
 // 停止计时并返回ack所花费时间
 void tcp_stop_timer(tju_tcp_t* sock) {
-    printf("[Timer] 结束计时.\n");
+    // 当计时器i已经停止时，我们只需要退出即可
+    if(sock->rtt_timer->started == 0) {
+        printf("[Timer] 计时器已经中断，不能重复中断.\n");
+        return;
+    }
+    pthread_mutex_lock(&sock->rtt_timer->timer_lock);
+    sock->rtt_timer->started = 0;
+    pthread_mutex_unlock(&sock->rtt_timer->timer_lock);
     pthread_mutex_lock(&sock->signal_lock);
     sock->interrupt_signal = 1;
     pthread_mutex_unlock(&sock->signal_lock);
     // 等待进程结束进行同步
     pthread_join(sock->rtt_timer->timer_thread, NULL);
-
-    pthread_mutex_lock(&sock->signal_lock);
-    sock->interrupt_signal = 0;
-    pthread_mutex_unlock(&sock->signal_lock);
+    printf("[Timer] 结束计时.\n");
 }
 
 
@@ -148,7 +163,7 @@ void tcp_retransmit_timer(tju_tcp_t* sock) {
     sendToLayer3(msg, plen);
 }
 
-void handle_loss_ack(tju_tcp_t* sock){
+void handle_loss_ack(tju_tcp_t* sock) {
     int timeout_counts=sock->timeout_counts%4;
     if(sock->con_status==SLOW_START){
         sock->ssthresh=(sock->cwnd+1)/2;

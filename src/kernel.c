@@ -96,7 +96,7 @@ int onTCPPocket(char* pkt){
     // 当我们收到TCP包时 包中 源IP 源端口 是发送方的 也就是我们眼里的 远程(remote) IP和端口
     uint16_t remote_port = get_src(pkt);
     uint16_t local_port = get_dst(pkt);
-    printf("get a pkt rwnd is %d \n", get_advertised_window(pkt));
+    printf("[流量控制] 获取对方窗口大小为: %d.\n", get_advertised_window(pkt));
     // remote ip 和 local ip 是读IP 数据包得到的 仿真的话这里直接根据hostname判断
     // 获取是server还是client
     int is_server;
