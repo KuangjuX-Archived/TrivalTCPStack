@@ -133,17 +133,6 @@ int onTCPPocket(char* pkt){
     // 根据4个ip port 组成四元组 查找有没有已经建立连接的socket
     hashval = cal_hash(local_ip, local_port, remote_ip, remote_port);
     tju_tcp_t* connect_sock = tcp_manager->connect_sock[hashval];
-    // if (established_socks[hashval] != NULL) {
-    //     // 这里应当判断是否发送FIN packet, 或者socket的状态不是ESTABLIED
-    //     int new_hash = cal_hash(local_ip, local_port, 0, 0);
-    //     if(is_server && (is_fin(pkt) || listen_socks[new_hash]->state != ESTABLISHED)) {
-    //         return tcp_state_close(listen_socks[new_hash], pkt);
-    //     }else if(!is_server &&(is_fin(pkt) || connect_sock->state != ESTABLISHED)) {
-    //         return tcp_state_close(connect_sock, pkt);
-    //     }else {
-    //         return tju_handle_packet(established_socks[hashval], pkt);
-    //     }
-    // }
 
     if(
         tcp_manager->is_server && 
@@ -251,7 +240,8 @@ _Noreturn void* receive_thread(void* arg){
             }
             // 通知内核收到一个完整的TCP报文
             if (onTCPPocket(pkt) < 0) {
-                printf("receive_thread: fail to depatch packets(onTCPPocket).\n");
+                // 根据 TCP 标准，此时应当向对方发送RST标志位
+                printf("[内核线程] 向对方发送RST标志位.\n");
             }
             free(pkt);
         }

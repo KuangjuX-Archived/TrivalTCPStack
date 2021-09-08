@@ -1,6 +1,7 @@
 TOP_DIR = .
 INC_DIR = $(TOP_DIR)/include
 SRC_DIR = $(TOP_DIR)/src
+APP_DIR = $(TOP_DIR)/app
 BUILD_DIR = $(TOP_DIR)/build
 
 LIBCO = $(TOP_DIR)/libco/lib
@@ -38,11 +39,11 @@ clean:
 	@rm -f ./build/*.o $(BUILD_DIR)/client $(BUILD_DIR)/server
 
 server: $(OBJS)
-	@$(CC) $(FLAGS) ./src/server.c -o $(BUILD_DIR)/server $(OBJS)
+	@$(CC) $(FLAGS) $(APP_DIR)/server.c -o $(BUILD_DIR)/server $(OBJS)
 	@$(BUILD_DIR)/server
 
 client: $(OBJS)
-	@$(CC) $(FLAGS) ./src/client.c -o $(BUILD_DIR)/client $(OBJS)
+	@$(CC) $(FLAGS) $(APP_DIR)/client.c -o $(BUILD_DIR)/client $(OBJS)
 	@$(BUILD_DIR)/client
 
 test_receiver: $(OBJS)

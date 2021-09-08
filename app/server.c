@@ -4,11 +4,9 @@
 #include <string.h>
 #include <arpa/inet.h>
 
-#define QUEUES 16
-#define SIZE 8192
 
 
-_Noreturn void echo(void* client) {
+void echo(void* client) {
     tju_tcp_t* socket = (tju_tcp_t*) client;
     printf("Start receive client message.\n");
     while (TRUE) {
@@ -48,13 +46,6 @@ int main(int argc, char **argv) {
     }
 
     char buf[512];
-    // tcp_recv(conn_sock, (void*)buf, 12);
-    // printf("%s\n", buf);
-    // tcp_send(conn_sock, (void*)buf, 12);
-
-    // tcp_recv(conn_sock, (void*)buf, 10);
-    // printf("%s\n", buf);
-    // tcp_send(conn_sock, (void*)buf, 10);
     for(int i = 10; i < 99; i++) {
         tcp_recv(conn_sock, buf, 7);
         printf("[接收消息] %s\n", buf);

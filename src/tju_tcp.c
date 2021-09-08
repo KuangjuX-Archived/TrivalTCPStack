@@ -26,10 +26,15 @@ const int socket_size = sizeof(tju_tcp_t);
 */
 
 // 这里传输的应该是建立连接的socket
-int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
+int tcp_rcv_state_server(
+    tju_tcp_t* sock, 
+    char* pkt, 
+    tju_sock_addr* conn_addr
+) {
     uint8_t flags = get_flags(pkt);
     sock->window.wnd_send->rwnd= get_advertised_window(pkt);
-    switch (sock->state) {
+    int hashval = cal_hash(sock->bind_addr.ip, sock->bind_addr.port, conn_addr->ip, conn_addr->port);
+    switch (sock->listen_state[hashval]) {
         case CLOSED:
             // 关闭状态，不能接受任何消息
             printf("Closed state can't receive messages.\n");
@@ -50,7 +55,8 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 tcp_update_expected_seq(sock, pkt);
 
                 // 修改服务端socket的状态
-                sock->state = SYN_SENT;
+                // sock->state = SYN_SENT;
+                sock->listen_state[hashval] = SYN_SENT;
                 // 加入到半连接哈希表中
                 int index = sockqueue_push(sock->syn_queue, conn_sock);
                 if (index < 0) {
@@ -76,8 +82,7 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
                 tcp_stop_timer(sock);
                 // 第三次握手，服务端发送ACK报文， 服务端将自己的socket变为ESTABLISHED，
                 // 从syns_socks取出对应的socket并加入到accept_socks中
-                // 处理完一个socket的三次握手过程，将socket的状态改为LISTEN
-                sock->state = LISTEN;
+                sock->listen_state[hashval] = ESTABLISHED;
 
                 // 更新expected_seq
                 tcp_update_expected_seq(sock, pkt);
@@ -102,7 +107,11 @@ int tcp_rcv_state_server(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_addr) {
     }
 }
 
-int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock) {
+int tcp_rcv_state_client(
+    tju_tcp_t* sock, 
+    char* pkt, 
+    tju_sock_addr* conn_sock
+) {
     uint8_t flags = get_flags(pkt);
     sock->window.wnd_send->rwnd= get_advertised_window(pkt);
     switch(flags) {
@@ -184,31 +193,16 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
                 // 等待2 * MSL 时间，释放socket资源
                 sleep(2 * MSL);
                 free(local_sock);
-                // connect_sock = NULL;
-                printf("CLOSED.\n");
+                printf("[关闭]\n");
                 return 0;
             }else {
                 return -1;
             }
         
-        // case TIME_WAIT:
-        //     if(flags == (FIN | ACK)) {
-        //         tcp_send_ack(local_sock);
-        //         // 这里应该等待两个2个MSL
-        //         // 释放socket资源
-        //         sleep(2 * MSL);
-        //         free(local_sock);
-        //         connect_sock = NULL;
-        //         printf("CLOSED.\n");
-        //         return 0;
-        //     }else {
-        //         return -1;
-        //     }
-        
         case LAST_ACK:
             // 关闭
             if(flags == ACK) {
-                printf("CLOSED.\n");
+                printf("[关闭]\n");
                 local_sock->state = CLOSED;
                 // 释放socket资源
                 free(local_sock);
@@ -291,7 +285,7 @@ void tcp_send_ack(tju_tcp_t* sock, int len) {
     // 瞎编seq和ack
     uint32_t seq = sock->window.wnd_recv->expect_seq + len;
     uint32_t ack = seq;
-    int rwnd=TCP_RECV_BUFFER_SIZE-sock->received_len;
+    int rwnd = TCP_RECV_BUFFER_SIZE-sock->received_len;
     char* send_pkt = create_packet_buf(
         sock->established_local_addr.port,
         sock->established_remote_addr.port,
@@ -301,6 +295,23 @@ void tcp_send_ack(tju_tcp_t* sock, int len) {
         HEADER_LEN,
         ACK,
         rwnd,
+        0,
+        NULL,
+        0
+    );
+    sendToLayer3(send_pkt, HEADER_LEN);
+}
+
+void tcp_send_rst(tju_tcp_t* sock) {
+        char* send_pkt = create_packet_buf(
+        sock->established_local_addr.port,
+        sock->established_remote_addr.port,
+        0,
+        0,
+        HEADER_LEN,
+        HEADER_LEN,
+        RST,
+        0,
         0,
         NULL,
         0

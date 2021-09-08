@@ -57,15 +57,14 @@ tju_tcp_t* tcp_socket(){
     sockqueue_init(&sock->accept_queue);
 
     //初始化拥塞控制相关
-    sock->ssthresh=IW;
-    sock->cwnd=SMSS;
-    sock->con_status=SLOW_START;
+    sock->ssthresh = IW;
+    sock->cwnd = SMSS;
+    sock->con_status = SLOW_START;
 
-    // 初始化建立连接队列
-    // for(int i = 0; i < MAX_SOCK_SIZE; i++) {
-    //     sock->established_queue[i] = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
-    //     sock->established_queue[i] = NULL;
-    // }
+    // 初始化监听socket的状态
+    for(int i = 0; i < MAX_SOCK_SIZE; i++) {
+        sock->listen_state[i] = CLOSED;
+    }
 
     return sock;
 }
@@ -86,14 +85,13 @@ int tcp_bind(tju_tcp_t* sock, tju_sock_addr bind_addr) {
 int tcp_listen(tju_tcp_t* sock){
     sock->state = LISTEN;
     int hashval = cal_hash(sock->bind_addr.ip, sock->bind_addr.port, 0, 0);
-    // listen_socks[hashval] = sock;
     // 获取tcp_manager并且将socket存储入监听队列中
     tcp_manager_t* tcp_manager = get_tcp_manager();
     tcp_manager->listen_queue[hashval] = sock;
-    // for(int i = 0; i < MAX_SOCK_SIZE; i++) {
-    //     sock->established_queue[i] = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
-    //     sock->established_queue[i] = NULL;
-    // }
+    // 初始化所有socket状态
+    for(int i = 0; i < MAX_SOCK_SIZE; i++) {
+        tcp_manager->listen_queue[hashval]->listen_state[i] = LISTEN;
+    }
     // 更新当前tcp状态
     tcp_manager->is_server = 1;
     return 0;

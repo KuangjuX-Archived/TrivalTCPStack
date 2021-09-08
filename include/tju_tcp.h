@@ -50,11 +50,6 @@ typedef struct {
 
 struct rtt_timer_t; 
 
-// typedef struct received_buf {
-// 	int capacity;
-// 	int size;
-// 	char* buf;
-// } received_buf;
 
 // TJU_TCP 结构体 保存TJU_TCP用到的各种数据
 typedef struct tju_tcp_t {
@@ -96,13 +91,14 @@ typedef struct tju_tcp_t {
 	struct sock_queue* syn_queue;
 	// 全连接队列
 	struct sock_queue* accept_queue;
-	// 已建立连接队列
-	// struct tju_tcp_t* established_queue[MAX_SOCK_SIZE];
 
     // 拥塞控制相关
     int con_status;
     int cwnd;
     int ssthresh;
+
+	// 监听socket应当有一个数组维护连接状态
+	int listen_state[MAX_SOCK_SIZE];
 
 } tju_tcp_t;
 
@@ -121,6 +117,7 @@ void tcp_send_fin(tju_tcp_t* sock);
 void tcp_send_syn(tju_tcp_t* sock);
 void tcp_send_syn_ack(tju_tcp_t* sock);
 void tcp_send_ack(tju_tcp_t* sock, int len);
+void tcp_send_rst(tju_tcp_t* sock);
 
 void tcp_update_expected_seq(tju_tcp_t* sock, char* pkt);
 

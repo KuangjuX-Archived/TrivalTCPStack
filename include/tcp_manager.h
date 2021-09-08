@@ -12,7 +12,7 @@ typedef struct tcp_manager_t {
     tju_tcp_t* established_queue[MAX_SOCK_SIZE];
     // 对于客户端来说，这里存储连接的socket
     tju_tcp_t* connect_sock[MAX_SOCK_SIZE];
-    // 判断是服务端还是客户端
+    // 判断是服务端还是客户端(其实不应该有，因为每台机器既可以当客户端又可以当服务端)
     int is_server;
 
 } tcp_manager_t;
