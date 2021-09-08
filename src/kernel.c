@@ -215,7 +215,7 @@ void sendToLayer3(char* packet_buf, int packet_len){
  一旦收到了大于TCPheader长度的数据 
  则接受整个TCP包并调用onTCPPocket()
 */
-_Noreturn void* receive_thread(void* arg){
+void* receive_thread(void* arg){
 
     char hdr[DEFAULT_HEADER_LEN];
     char* pkt;
