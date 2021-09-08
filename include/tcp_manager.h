@@ -8,6 +8,8 @@
 typedef struct tcp_manager_t {
     // 监听队列，应当放在全局变量中被管理者管理
     tju_tcp_t* listen_queue[MAX_SOCK_SIZE];
+    // 建立连接队列
+    tju_tcp_t* established_queue[MAX_SOCK_SIZE];
     // 对于客户端来说，这里存储连接的socket
     tju_tcp_t* connect_sock[MAX_SOCK_SIZE];
     // 判断是服务端还是客户端

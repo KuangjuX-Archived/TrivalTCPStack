@@ -17,9 +17,6 @@ const int socket_size = sizeof(tju_tcp_t);
 ====================================================
 */
 
-// extern sock_queue* syns_socks;
-// extern sock_queue* accept_socks;
-extern tju_tcp_t* connect_sock;
 
 
 /*

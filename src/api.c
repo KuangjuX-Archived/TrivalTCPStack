@@ -57,10 +57,10 @@ tju_tcp_t* tcp_socket(){
     sock->con_status=SLOW_START;
 
     // 初始化建立连接队列
-    for(int i = 0; i < MAX_SOCK_SIZE; i++) {
-        sock->established_queue[i] = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
-        sock->established_queue[i] = NULL;
-    }
+    // for(int i = 0; i < MAX_SOCK_SIZE; i++) {
+    //     sock->established_queue[i] = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
+    //     sock->established_queue[i] = NULL;
+    // }
 
     return sock;
 }
@@ -85,10 +85,10 @@ int tcp_listen(tju_tcp_t* sock){
     // 获取tcp_manager并且将socket存储入监听队列中
     tcp_manager_t* tcp_manager = get_tcp_manager();
     tcp_manager->listen_queue[hashval] = sock;
-    for(int i = 0; i < MAX_SOCK_SIZE; i++) {
-        sock->established_queue[i] = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
-        sock->established_queue[i] = NULL;
-    }
+    // for(int i = 0; i < MAX_SOCK_SIZE; i++) {
+    //     sock->established_queue[i] = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
+    //     sock->established_queue[i] = NULL;
+    // }
     // 更新当前tcp状态
     tcp_manager->is_server = 1;
     return 0;
@@ -138,7 +138,10 @@ int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
         remote_addr.port
     );
     // established_socks[hashval] = conn_sock;
-    listen_sock->established_queue[hashval] = conn_sock;
+    // listen_sock->established_queue[hashval] = conn_sock;
+    tcp_manager_t* tcp_manager = get_tcp_manager();
+    tcp_manager->established_queue[hashval] = conn_sock;
+    
     conn_sock->window.wnd_recv->expect_seq = 0;
     conn_sock->window.wnd_send->base = 0;
     conn_sock->window.wnd_send->nextseq = 0;
@@ -211,7 +214,9 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
         sock->established_remote_addr.port
     );
     // established_socks[hashval] = sock;
-    sock->established_queue[hashval] = sock;
+    // sock->established_queue[hashval] = sock;
+    // tcp_manager_t* tcp_manager = get_tcp_manager();
+    tcp_manager->connect_sock[hashval] = sock;
     sock->window.wnd_recv->expect_seq = 0;
     sock->window.wnd_send->base = 0;
     sock->window.wnd_send->nextseq = 0;

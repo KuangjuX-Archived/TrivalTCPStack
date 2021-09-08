@@ -97,7 +97,7 @@ typedef struct tju_tcp_t {
 	// 全连接队列
 	struct sock_queue* accept_queue;
 	// 已建立连接队列
-	struct tju_tcp_t* established_queue[MAX_SOCK_SIZE];
+	// struct tju_tcp_t* established_queue[MAX_SOCK_SIZE];
 
     // 拥塞控制相关
     int con_status;

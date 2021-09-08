@@ -147,10 +147,10 @@ int onTCPPocket(char* pkt){
 
     if(
         tcp_manager->is_server && 
-        listen_sock->established_queue[hashval] != NULL &&
-        (is_fin(pkt) || listen_sock->established_queue[hashval]->state != ESTABLISHED)
+        tcp_manager->established_queue[hashval] != NULL &&
+        (is_fin(pkt) || tcp_manager->established_queue[hashval]->state != ESTABLISHED)
     ) {
-        return tcp_state_close(listen_sock->established_queue[hashval], pkt);
+        return tcp_state_close(tcp_manager->established_queue[hashval], pkt);
     
     }else if(
         !tcp_manager->is_server && 
@@ -158,8 +158,8 @@ int onTCPPocket(char* pkt){
         (is_fin(pkt) || (connect_sock->state != ESTABLISHED && connect_sock->state != SYN_SENT))
         ) {
             return tcp_state_close(connect_sock, pkt);
-    }else if(tcp_manager->is_server && listen_sock->established_queue[hashval] != NULL) {
-        return tju_handle_packet(listen_sock->established_queue[hashval], pkt);
+    }else if(tcp_manager->is_server && tcp_manager->established_queue[hashval] != NULL) {
+        return tju_handle_packet(tcp_manager->established_queue[hashval], pkt);
     }else if(!tcp_manager->is_server && connect_sock->state == ESTABLISHED) {
         return tju_handle_packet(connect_sock, pkt);
     }
