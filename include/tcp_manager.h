@@ -19,5 +19,8 @@ typedef struct tcp_manager_t {
 
 void tcp_manager_init();
 tcp_manager_t* get_tcp_manager();
+tju_tcp_t* get_listen_sock(int index);
+tju_tcp_t* get_established_sock(int index);
+tju_tcp_t* get_connect_sock(int index);
 
 #endif

@@ -23,3 +23,15 @@ tcp_manager_t* get_tcp_manager() {
     return tcp_manager;
 }
 
+tju_tcp_t* get_listen_sock(int index) {
+    return tcp_manager->listen_queue[index];
+}
+
+tju_tcp_t* get_established_sock(int index) {
+    return tcp_manager->established_queue[index];
+}
+
+tju_tcp_t* get_connect_sock(int index) {
+    return tcp_manager->connect_sock[index];
+}
+
