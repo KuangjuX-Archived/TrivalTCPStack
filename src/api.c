@@ -288,7 +288,7 @@ int tcp_close (tju_tcp_t* sock) {
     // 修改当前状态
     sock->state = FIN_WAIT_1;
     // 发送FIN分组
-    tcp_send_fin(sock);
+    tcp_send_fin_ack(sock);
     // 这里暂时只检查客户端的状态
     while(sock->state != CLOSED) {}
 }

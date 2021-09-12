@@ -21,7 +21,7 @@ int main(int argc, char **argv) {
         printf("[发送消息] %s.\n", msg);
         tcp_send(my_socket, msg, 7);
     }
-    // while(TRUE){}
-    tcp_close(my_socket);
+    while(TRUE){}
+    // tcp_close(my_socket);
     return EXIT_SUCCESS;
 }

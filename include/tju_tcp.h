@@ -112,11 +112,14 @@ int tcp_rcv_state_client(tju_tcp_t* sock, char* pkt, tju_sock_addr* conn_sock);
 // 关闭处理
 int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt);
 
+// 初始化监听socket
+void tcp_init_listener(tju_tcp_t* sock);
+
 // 传输控制位packet
-void tcp_send_fin(tju_tcp_t* sock);
+void tcp_send_fin_ack(tju_tcp_t* sock);
 void tcp_send_syn(tju_tcp_t* sock);
 void tcp_send_syn_ack(tju_tcp_t* sock);
-void tcp_send_ack(tju_tcp_t* sock, int len);
+void tcp_send_ack(tju_tcp_t* sock);
 void tcp_send_rst(tju_tcp_t* sock);
 
 void tcp_update_expected_seq(tju_tcp_t* sock, char* pkt);

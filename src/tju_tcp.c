@@ -56,7 +56,7 @@ int tcp_rcv_state_server(
 
                 // 修改服务端socket的状态
                 // sock->state = SYN_SENT;
-                sock->listen_state[hashval] = SYN_SENT;
+                sock->listen_state[hashval] = SYN_RECV;
                 // 加入到半连接哈希表中
                 int index = sockqueue_push(sock->syn_queue, conn_sock);
                 if (index < 0) {
@@ -77,7 +77,7 @@ int tcp_rcv_state_server(
                 printf("TrivialTCP should receive SYN_SENT pakcet.\n");
                 return -1;
             }
-        case SYN_SENT:
+        case SYN_RECV:
             if (flags == ACK) {
                 tcp_stop_timer(sock);
                 // 第三次握手，服务端发送ACK报文， 服务端将自己的socket变为ESTABLISHED，
@@ -96,8 +96,11 @@ int tcp_rcv_state_server(
                 conn_sock->state = ESTABLISHED;
                 sockqueue_push(sock->accept_queue, conn_sock);
                 return 0;
+            } else if(flags == RST) {
+                // 收到RST，重置TCP连接
+                tcp_init_listener(sock);
             } else {
-                // 当flags不是ESTABLSHED时，暂时忽略
+                // 当flags不是 ESTABLSHED 时，暂时忽略
                 printf("TrivialTCP should receive ESTABLISHED packet.\n");
                 return -1;
             }
@@ -164,12 +167,12 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
                 // 将本地socket状态修改为CLOS_WAIT
                 local_sock->state = CLOSE_WAIT;
                 // 向对方发送ACK
-                tcp_send_ack(local_sock, 0);
+                tcp_send_ack(local_sock);
                 
                 // 等待一段时间，继续向远程发送pakcet
                 sleep(MSL * 2);
                 local_sock->state = LAST_ACK;
-                tcp_send_fin(local_sock);
+                tcp_send_fin_ack(local_sock);
                 return 0;
             }else {
                 printf("[客户端] 未解决的标志位.\n");
@@ -188,7 +191,7 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
 
         case FIN_WAIT_2:
             if(flags == (FIN | ACK)) {
-                tcp_send_ack(local_sock, 0);
+                tcp_send_ack(local_sock);
                 local_sock->state = TIME_WAIT;
                 // 等待2 * MSL 时间，释放socket资源
                 sleep(2 * MSL);
@@ -216,7 +219,15 @@ int tcp_state_close(tju_tcp_t* local_sock, char* recv_pkt) {
     }
 }
 
-void tcp_send_fin(tju_tcp_t* sock) {
+// 重置监听socket的状态
+void tcp_init_listener(tju_tcp_t* sock) {
+    sock->state = LISTEN;
+    sock->window.wnd_recv->expect_seq = 0;
+    sock->window.wnd_send->base = 0;
+    sock->window.wnd_send->nextseq = 0;
+}
+
+void tcp_send_fin_ack(tju_tcp_t* sock) {
     char* send_pkt;
     // 瞎编seq和ack
     int seq = sock->window.wnd_recv->expect_seq;
@@ -281,9 +292,9 @@ void tcp_send_syn_ack(tju_tcp_t* sock) {
     sendToLayer3(send_pkt, HEADER_LEN);
 }
 
-void tcp_send_ack(tju_tcp_t* sock, int len) {
+void tcp_send_ack(tju_tcp_t* sock) {
     // 瞎编seq和ack
-    uint32_t seq = sock->window.wnd_recv->expect_seq + len;
+    uint32_t seq = sock->window.wnd_recv->expect_seq;
     uint32_t ack = seq;
     int rwnd = TCP_RECV_BUFFER_SIZE-sock->received_len;
     char* send_pkt = create_packet_buf(
@@ -303,11 +314,13 @@ void tcp_send_ack(tju_tcp_t* sock, int len) {
 }
 
 void tcp_send_rst(tju_tcp_t* sock) {
-        char* send_pkt = create_packet_buf(
+    uint32_t seq = sock->window.wnd_recv->expect_seq;
+    uint32_t ack = seq;
+    char* send_pkt = create_packet_buf(
         sock->established_local_addr.port,
         sock->established_remote_addr.port,
-        0,
-        0,
+        seq,
+        ack,
         HEADER_LEN,
         HEADER_LEN,
         RST,
@@ -403,14 +416,14 @@ void set_checksum(tju_packet_t* pkt) {
  **/
 
 // 通过GBN将发送缓冲区的内容发送给下层协议
-_Noreturn void* tcp_send_stream(void* arg) {
+void* tcp_send_stream(void* arg) {
     tju_tcp_t* sock = (tju_tcp_t*)arg;
     // 监听缓冲区中的数据
     for(;;) {
         if(sock->sending_len > 0) {
-            int improve_flag=improve_send_wnd(sock);
+            int improve_flag = improve_send_wnd(sock);
             if(!improve_flag) continue;
-            int wnd_size=min_among_3(sock->cwnd,sock->window.wnd_send->rwnd,sock->sending_len);
+            int wnd_size = min_among_3(sock->cwnd,sock->window.wnd_send->rwnd,sock->sending_len);
 
             pthread_mutex_lock(&sock->send_lock);
             int window_left = sock->window.wnd_send->window_size 
@@ -437,7 +450,7 @@ _Noreturn void* tcp_send_stream(void* arg) {
 
             if(seq < base + window_size) {
                 // 发送数据
-                uint16_t adv_wnd=TCP_SEND_BUFFER_SIZE-sock->received_len;
+                uint16_t adv_wnd = TCP_SEND_BUFFER_SIZE-sock->received_len;
                 char* ptr = sock->window.wnd_send->send_windows + sock->window.wnd_send->nextseq;
                 memcpy(ptr, buf, len);
                 char* msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 

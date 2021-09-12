@@ -85,9 +85,10 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
     // 这里需要针对socket的状态进行不同的操作
     switch(sock->state) {
         case SYN_SENT:
-            tcp_send_syn(sock);
+            // 当处于SYN_SENT状态超时时应当发送RST标志位的packet
+            tcp_send_rst(sock);
         case SYN_RECV:  
-            tcp_send_syn_ack(sock);
+            tcp_send_rst(sock);
         case ESTABLISHED: 
             // 超时重传，这里或许需要判断一下重传的次数，若重传次数过多应该关闭连接
             if(sock->timeout_counts > RETRANSMIT_LIMIT) {
