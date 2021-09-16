@@ -128,7 +128,7 @@ int tcp_rcv_state_client(
                 int seq = get_seq(pkt) + 1;
                 int ack = get_seq(pkt) + 1;
                 // 构建packet发送给服务端
-                uint16_t adv_wnd=TCP_SEND_BUFFER_SIZE-sock->received_len;
+                uint16_t adv_wnd=TCP_RECV_BUFFER_SIZE-sock->received_len;
                 char* send_pkt = create_packet_buf(
                     sock->established_local_addr.port,
                     conn_sock->port,
@@ -416,14 +416,23 @@ void set_checksum(tju_packet_t* pkt) {
  **/
 
 // 通过GBN将发送缓冲区的内容发送给下层协议
-void* tcp_send_stream(void* arg) {
+_Noreturn void* tcp_send_stream(void* arg) {
     tju_tcp_t* sock = (tju_tcp_t*)arg;
+    int x=1;
     // 监听缓冲区中的数据
     for(;;) {
+        printf("发送循环第%d轮 \n",x);
+        x++;
         if(sock->sending_len > 0) {
             int improve_flag = improve_send_wnd(sock);
-            if(!improve_flag) continue;
-            int wnd_size = min_among_3(sock->cwnd,sock->window.wnd_send->rwnd,sock->sending_len);
+            if(!improve_flag) {
+                printf("sleep by improve_flag \n");
+                sleep(1);
+                continue;
+            }
+            int data_on_way=sock->window.wnd_send->nextseq-sock->window.wnd_send->base;
+            int uwnd=sock->window.wnd_send->rwnd-data_on_way;
+            int wnd_size = min_among_3(sock->cwnd,uwnd,sock->sending_len);
 
             pthread_mutex_lock(&sock->send_lock);
             int window_left = sock->window.wnd_send->window_size 
@@ -450,12 +459,11 @@ void* tcp_send_stream(void* arg) {
 
             if(seq < base + window_size) {
                 // 发送数据
-                uint16_t adv_wnd = TCP_SEND_BUFFER_SIZE-sock->received_len;
+                uint16_t adv_wnd = TCP_RECV_BUFFER_SIZE-sock->received_len;
                 char* ptr = sock->window.wnd_send->send_windows + sock->window.wnd_send->nextseq;
                 memcpy(ptr, buf, len);
                 char* msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 
                     DEFAULT_HEADER_LEN, plen, NO_FLAG, adv_wnd, 0, buf, len);
-                printf("[发送数据] 窗口大小: %d\n" , adv_wnd);
                 sendToLayer3(msg, plen);
             }
             if(base == seq) {
@@ -500,11 +508,26 @@ void load_data_to_sending_buffer(tju_tcp_t *sock, const void *buffer, int len) {
 int improve_send_wnd(tju_tcp_t* sock){
     float rwnd= (float)sock->window.wnd_send->rwnd;
     float data_on_way=(float)sock->window.wnd_send->nextseq-sock->window.wnd_send->base;
-    if((rwnd-data_on_way)/rwnd<IMPROVED_WINDOW_THRESHOLD){
+    if(rwnd<0.1||(rwnd-data_on_way)/rwnd<IMPROVED_WINDOW_THRESHOLD){
+        printf("[流量控制] 只发送header 对方rwnd为: %d 计算阈值为%f 路上文件大小：%f\n",sock->window.wnd_send->rwnd,(rwnd-data_on_way)/rwnd,data_on_way);
+        send_only_header(sock);
         return 0;
     }else{
+        printf("[流量控制] 正常 对方rwnd为: %d 计算阈值为%f 路上文件大小：%f\n",sock->window.wnd_send->rwnd,(rwnd-data_on_way)/rwnd,data_on_way);
+
         return 1;
     }
+}
+
+void send_only_header(tju_tcp_t* sock){
+    uint16_t adv_wnd = TCP_RECV_BUFFER_SIZE-sock->received_len;
+    uint16_t plen = DEFAULT_HEADER_LEN;
+    uint32_t seq = sock->window.wnd_send->nextseq;
+    char* buf;
+    char* msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0,
+                                  DEFAULT_HEADER_LEN, plen, HEAD, adv_wnd, 0, buf, 0);
+    printf("[发送ONLY_HEADER] 窗口大小: %d header seq: %d\n" , adv_wnd,seq);
+    sendToLayer3(msg, plen);
 }
 
 void sending_buffer_to_layer3(tju_tcp_t *sock,int len,int push_bit_flag){

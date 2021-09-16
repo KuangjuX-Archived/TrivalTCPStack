@@ -381,16 +381,36 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
 - `void tcp_outlimit_retransmit(tju_tcp_t* sock)`：超时重传次数过多，此时应当主动关闭连接。
 
 ## 流量控制
+在TCP的RFC中，TCP不拥有一块固定最大大小的接收缓存用于储存未被上层处理的已接受的TCP segment,因为对于服务器来说，时间分片或者其他CPU调度算法是一定存在的，
+用户无法保证接收到的数据会被立即处理，所以缓存是必须存在的。对于TCP这样的可靠传输来说，丢弃溢出的TCP段会造成对于网络链路带宽的浪费，因为丢弃的段一定会被重传
+用于保证可靠传输，所以流量控制就显得异常重要。
 
+对于最简单的流量控制算法，仅仅在header中添加空闲空间，会导致SWS(愚蠢窗口综合征)，简单地描述就是，当接收方应用进程处理数据缓慢时，会导致空闲空间较少，
+而发送方会在有空闲的情况下就发送数据，导致在极端情况下，发送方发送1字节的数据需要20字节的head用于TCP segment封装，所以流量控制也要尽量避免SWS。
 ### 改进窗口算法
+
+![](image/改进窗口.png)
 
 发送方根据接收方的rwnd,已接受的ack和发送的seq计算出接收方的useable window size, 如果其比值小于某个阈值则延迟发送新的数据，仅仅发送一个HEAD用于维持链接。
 
-实现如下所示：
+改进窗口算法可以从发送方的角度避免SWS，而且在开销很小的情况下实现完全限度的避免SWS。
 
-Tju_tcp中的 `void calculate_sending_buffer_depend_on_rwnd(tju_tcp_t* sock);` 根据rwnd计算出uwnd然后相应的计算出最大的可发送长度，然后调用 `sending_buffer_to_layer3(sock,sock->sending_len,TRUE);`
+关键函数实现如下所示：
 
-函数将可发送的最大长度的数据从`sending_buffer`中发送出去并且将最后一个段的push bit 标记为 1 用于告知接收方该段为最后一个段。
+```c
+int improve_send_wnd(tju_tcp_t* sock){
+    float rwnd= (float)sock->window.wnd_send->rwnd;
+    float data_on_way=(float)sock->window.wnd_send->nextseq-sock->window.wnd_send->base;
+    if((rwnd-data_on_way)/rwnd<IMPROVED_WINDOW_THRESHOLD){
+        return 0;
+    }else{
+        return 1;
+    }
+}
+```
+
+在本函数中，会根据对方的rwnd和自身记录的已发送和对方已ack的大小计算出在路上的数据总量，然后用uwnd/rwnd得出一个比例，
+若小于预设的阈值（通常为25%）那么就发送数据，否则就等待对方空闲的足够多为止。
 
 ### 改善确认算法
 

@@ -60,7 +60,7 @@ int build_state_pkt(char* recv_pkt, char** send_pkt, int flags) {
     int len = HEADER_LEN;
     int seq = get_seq(recv_pkt) + len;
     int ack = get_seq(recv_pkt) + 1;
-    uint16_t adv_wnd=TCP_SEND_BUFFER_SIZE; //default for max cause sock cant get
+    uint16_t adv_wnd=TCP_RECV_BUFFER_SIZE; //default for max cause sock cant get
     *send_pkt = create_packet_buf(
         get_dst(recv_pkt),
         get_src(recv_pkt),

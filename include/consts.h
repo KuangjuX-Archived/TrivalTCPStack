@@ -39,6 +39,9 @@
 #define PSH (1<<3)
 #define ACK (1<<4)
 #define URG (1<<5)
+// for only header pkg
+#define HEAD (1<<6)
+#define BACKHEAD (1<<7)
 
 // #define SYN (1<<3)
 // #define ACK (1<<2)
@@ -58,7 +61,8 @@
 
 // TCP send/recv buffer size
 #define TCP_SEND_BUFFER_SIZE 65535 //max for uint16
-#define TCP_RECV_BUFFER_SIZE 65535 //max for uint16
+#define TCP_RECV_BUFFER_SIZE 100 //max for uint16
+
 
 // TCP改进窗口算法的阈值
 #define IMPROVED_WINDOW_THRESHOLD 0.25

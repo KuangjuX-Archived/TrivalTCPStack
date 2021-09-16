@@ -21,6 +21,17 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
     uint32_t seq = get_seq(pkt);
     uint32_t adv_wnd= get_advertised_window(pkt);
     sock->window.wnd_send->rwnd=adv_wnd;
+    printf("package flag %d",flag);
+    if(flag==HEAD){
+        printf("[RECEIVE] only head.\n");
+        back_only_header(sock);
+        return 0;
+    }
+
+    if(flag==BACKHEAD){
+        printf("[RECEIVE] only head.\n");
+        return 0;
+    }
 
     if(flag == ACK) {
         handle_success_ack(sock);
@@ -150,6 +161,7 @@ int onTCPPocket(char* pkt){
     }else if(tcp_manager->is_server && tcp_manager->established_queue[hashval] != NULL) {
         return tju_handle_packet(tcp_manager->established_queue[hashval], pkt);
     }else if(!tcp_manager->is_server && connect_sock->state == ESTABLISHED) {
+//        printf("[流量控制] 我的窗口大小为: %d.\n", connect_sock->received_len);
         return tju_handle_packet(connect_sock, pkt);
     }
 
@@ -331,4 +343,22 @@ void handle_success_ack(tju_tcp_t* sock){
     }else{
         printf("handle_success_ack 出现未定义行为\n");
     }
+}
+
+/*
+=======================================================
+====================流量控制相关函数===================
+=======================================================
+*/
+
+void back_only_header(tju_tcp_t* sock){
+    printf("%d %d \n",sock->received_len,TCP_RECV_BUFFER_SIZE-sock->received_len);
+    uint16_t adv_wnd = TCP_RECV_BUFFER_SIZE-sock->received_len;
+    uint16_t plen = DEFAULT_HEADER_LEN;
+    uint32_t seq = sock->window.wnd_send->nextseq;
+    char* buf;
+    char* msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0,
+                                  DEFAULT_HEADER_LEN, plen, BACKHEAD, adv_wnd, 0, buf, 0);
+    printf("[发送 BACK ONLY_HEADER] 窗口大小: %d header seq: %d\n" , adv_wnd,seq);
+    sendToLayer3(msg, plen);
 }

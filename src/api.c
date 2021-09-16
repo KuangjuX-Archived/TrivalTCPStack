@@ -6,7 +6,7 @@
 #include "sockqueue.h"
 #include "tcp_manager.h"
 
-void* tcp_send_stream(void* arg);
+_Noreturn void* tcp_send_stream(void* arg);
 void sendToLayer3(char* packet_buf, int packet_len);
 int cal_hash(uint32_t local_ip, uint16_t local_port, uint32_t remote_ip, uint16_t remote_port);
 /*
