@@ -297,6 +297,7 @@ void tcp_send_ack(tju_tcp_t* sock) {
     uint32_t seq = sock->window.wnd_recv->expect_seq;
     uint32_t ack = seq;
     int rwnd = TCP_RECV_BUFFER_SIZE-sock->received_len;
+    printf("[ACK] %d,%d\n",rwnd,sock->received_len);
     char* send_pkt = create_packet_buf(
         sock->established_local_addr.port,
         sock->established_remote_addr.port,

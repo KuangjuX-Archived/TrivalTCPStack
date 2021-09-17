@@ -21,7 +21,7 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
     uint32_t seq = get_seq(pkt);
     uint32_t adv_wnd= get_advertised_window(pkt);
     sock->window.wnd_send->rwnd=adv_wnd;
-    printf("package flag %d",flag);
+    printf("package flag %d \n",flag);
     if(flag==HEAD){
         printf("[RECEIVE] only head.\n");
         back_only_header(sock);
@@ -29,7 +29,7 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
     }
 
     if(flag==BACKHEAD){
-        printf("[RECEIVE] only head.\n");
+        printf("BACK HEAD [RECEIVE] only head.\n");
         return 0;
     }
 
@@ -74,7 +74,6 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
             // 更新expected_seq
             int len = get_plen(pkt) - get_hlen(pkt);
             sock->window.wnd_recv->expect_seq += len;
-            tcp_send_ack(sock);
             // 继续执行，接受数据
         }else if(seq < expected_seq) {
             printf("Invalid sequence number.\n");
@@ -95,7 +94,7 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
     sock->received_len += data_len;
 
     pthread_mutex_unlock(&(sock->recv_lock)); // 解锁
-
+    tcp_send_ack(sock);
 
     return 0;
 }
@@ -359,6 +358,6 @@ void back_only_header(tju_tcp_t* sock){
     char* buf;
     char* msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0,
                                   DEFAULT_HEADER_LEN, plen, BACKHEAD, adv_wnd, 0, buf, 0);
-    printf("[发送 BACK ONLY_HEADER] 窗口大小: %d header seq: %d\n" , adv_wnd,seq);
+    printf("[发送 BACK ONLY_HEADER] 窗口大小: %d received len: %d\n" , adv_wnd,sock->received_len);
     sendToLayer3(msg, plen);
 }
