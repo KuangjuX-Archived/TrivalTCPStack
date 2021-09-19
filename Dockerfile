@@ -14,6 +14,13 @@ RUN apt-get update \
     && apt install -y tmux \
     && apt install -y openssh-server \
     && apt install -y openssh-client \
-    && apt install -y vim
+    && apt install -y vim \
+    && apt-get install python3 -y \
+    && apt-get install python3-pip -y \
+    && pip install tcconfig \
+    && apt-get install tcpdump -y \
+    && apt-get install sudo -y \
+    && apt-get install net-tools -y \
+    && apt-get install iproute2 -y
 
 EXPOSE 22
