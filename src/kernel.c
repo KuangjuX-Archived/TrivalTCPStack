@@ -21,15 +21,15 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
     uint32_t seq = get_seq(pkt);
     uint32_t adv_wnd= get_advertised_window(pkt);
     sock->window.wnd_send->rwnd=adv_wnd;
-    printf("package flag %d \n",flag);
+    // printf("package flag %d \n",flag);
     if(flag==HEAD){
-        printf("[RECEIVE] only head.\n");
+        // printf("[RECEIVE] only head.\n");
         back_only_header(sock);
         return 0;
     }
 
     if(flag==BACKHEAD){
-        printf("BACK HEAD [RECEIVE] only head.\n");
+        // printf("BACK HEAD [RECEIVE] only head.\n");
         return 0;
     }
 
@@ -66,7 +66,7 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
             // 选择丢弃或者存起来(选择重传)
 
             // 这里先丢弃
-            printf("Disorder sequence number.\n");
+            printf("[处理分组] 失序的序列号.\n");
             return 0;
         }else if(seq == expected_seq) {
             // 向对方发送ACK
@@ -76,7 +76,7 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
             sock->window.wnd_recv->expect_seq += len;
             // 继续执行，接受数据
         }else if(seq < expected_seq) {
-            printf("Invalid sequence number.\n");
+            printf("[处理分组] 无效的序列号.\n");
             return -1;
         }
     }
@@ -106,7 +106,7 @@ int onTCPPocket(char* pkt){
     // 当我们收到TCP包时 包中 源IP 源端口 是发送方的 也就是我们眼里的 远程(remote) IP和端口
     uint16_t remote_port = get_src(pkt);
     uint16_t local_port = get_dst(pkt);
-    printf("[流量控制] 获取对方窗口大小为: %d.\n", get_advertised_window(pkt));
+    // printf("[流量控制] 获取对方窗口大小为: %d.\n", get_advertised_window(pkt));
     // remote ip 和 local ip 是读IP 数据包得到的 仿真的话这里直接根据hostname判断
     // 获取是server还是client
     int is_server;
@@ -358,6 +358,6 @@ void back_only_header(tju_tcp_t* sock){
     char* buf;
     char* msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0,
                                   DEFAULT_HEADER_LEN, plen, BACKHEAD, adv_wnd, 0, buf, 0);
-    printf("[发送 BACK ONLY_HEADER] 窗口大小: %d received len: %d\n" , adv_wnd,sock->received_len);
+    // printf("[发送 BACK ONLY_HEADER] 窗口大小: %d received len: %d\n" , adv_wnd,sock->received_len);
     sendToLayer3(msg, plen);
 }

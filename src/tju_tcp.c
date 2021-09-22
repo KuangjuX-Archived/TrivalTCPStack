@@ -422,12 +422,12 @@ _Noreturn void* tcp_send_stream(void* arg) {
     int x=1;
     // 监听缓冲区中的数据
     for(;;) {
-        printf("发送循环第%d轮 \n",x);
+        // printf("发送循环第%d轮 \n",x);
         x++;
         if(sock->sending_len > 0) {
             int improve_flag = improve_send_wnd(sock);
             if(!improve_flag) {
-                printf("sleep by improve_flag \n");
+                // printf("sleep by improve_flag \n");
                 sleep(1);
                 continue;
             }
@@ -510,11 +510,11 @@ int improve_send_wnd(tju_tcp_t* sock){
     float rwnd= (float)sock->window.wnd_send->rwnd;
     float data_on_way=(float)sock->window.wnd_send->nextseq-sock->window.wnd_send->base;
     if(rwnd<0.1||(rwnd-data_on_way)/rwnd<IMPROVED_WINDOW_THRESHOLD){
-        printf("[流量控制] 只发送header 对方rwnd为: %d 计算阈值为%f 路上文件大小：%f\n",sock->window.wnd_send->rwnd,(rwnd-data_on_way)/rwnd,data_on_way);
+        // printf("[流量控制] 只发送header 对方rwnd为: %d 计算阈值为%f 路上文件大小：%f\n",sock->window.wnd_send->rwnd,(rwnd-data_on_way)/rwnd,data_on_way);
         send_only_header(sock);
         return 0;
     }else{
-        printf("[流量控制] 正常 对方rwnd为: %d 计算阈值为%f 路上文件大小：%f\n",sock->window.wnd_send->rwnd,(rwnd-data_on_way)/rwnd,data_on_way);
+        // printf("[流量控制] 正常 对方rwnd为: %d 计算阈值为%f 路上文件大小：%f\n",sock->window.wnd_send->rwnd,(rwnd-data_on_way)/rwnd,data_on_way);
 
         return 1;
     }
@@ -527,7 +527,7 @@ void send_only_header(tju_tcp_t* sock){
     char* buf;
     char* msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0,
                                   DEFAULT_HEADER_LEN, plen, HEAD, adv_wnd, 0, buf, 0);
-    printf("[发送ONLY_HEADER] 窗口大小: %d header seq: %d\n" , adv_wnd,seq);
+    // printf("[发送ONLY_HEADER] 窗口大小: %d header seq: %d\n" , adv_wnd,seq);
     sendToLayer3(msg, plen);
 }
 

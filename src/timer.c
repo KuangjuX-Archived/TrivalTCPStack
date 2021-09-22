@@ -150,6 +150,7 @@ void tcp_retransmit_timer(tju_tcp_t* sock) {
     int base = sock->window.wnd_send->base % TCP_SEND_WINDOW_SIZE;
     int next_seq = sock->window.wnd_send->nextseq % TCP_SEND_WINDOW_SIZE;
     int len = next_seq - base;
+    printf("[重传分组] base: %d next_seq: %d len: %d.\n", base, next_seq, len);
     char* buf = (char*)malloc(len);
     memcpy(buf, sock->window.wnd_send->send_windows + base, len);
 
@@ -161,6 +162,7 @@ void tcp_retransmit_timer(tju_tcp_t* sock) {
     
     // 打开计时器
     tcp_start_timer(sock);
+    printf("[重传分组] 发送packet.\n");
     sendToLayer3(msg, plen);
 }
 
