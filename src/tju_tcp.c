@@ -42,7 +42,7 @@ int tcp_rcv_state_server(
         case LISTEN:
             // 判断packet flags 是否为 SYN_SENT 并判断ack的值
             if (flags == SYN) {
-                printf("[Debug] Server receive SYN request.\n");
+                printf("[Debug] 服务端收到 SYN 分组.\n");
                 // 第二次握手，服务端修改自己的状态，
                 // 并且发送 SYN_RECV 标志的pakcet，
                 // 加入到半连接哈希表中（暂时不考虑重置状态）                
@@ -50,6 +50,10 @@ int tcp_rcv_state_server(
                 tju_tcp_t* conn_sock = (tju_tcp_t*)malloc(sizeof(tju_tcp_t));
                 conn_sock->bind_addr.ip = conn_addr->ip;
                 conn_sock->bind_addr.port = conn_addr->port;
+
+                // 重传使用
+                sock->established_remote_addr.ip = conn_addr->ip;
+                sock->established_remote_addr.port = conn_addr->port;
 
                 // 第一次收到消息，初始化接收窗口
                 tcp_update_expected_seq(sock, pkt);
@@ -467,7 +471,7 @@ _Noreturn void* tcp_send_stream(void* arg) {
                 memcpy(ptr, buf, len);
                 char* msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 
                     DEFAULT_HEADER_LEN, plen, NO_FLAG, adv_wnd, 0, buf, len);
-                printf("[发送分组] 序列号为: %d.\n", seq);
+                printf(RED "[发送分组] 序列号为: %d.\n" RESET, seq);
                 sendToLayer3(msg, plen);
                 sock->window.wnd_send->nextseq += len;
             } else if(base == seq) {

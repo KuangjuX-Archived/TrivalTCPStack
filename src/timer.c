@@ -102,8 +102,26 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
                 0
             );
             sendToLayer3(send_pkt, HEADER_LEN);
+            break;
         case SYN_RECV:  
-            tcp_send_rst(sock);
+            // tcp_send_rst(sock);
+            // 此时服务端应当重新向客户端发送分组
+            tcp_start_timer(sock);
+            char* send_pkt_2 = create_packet(
+                sock->bind_addr.port,
+                sock->established_remote_addr.port,
+                0,
+                0,
+                HEADER_LEN,
+                HEADER_LEN,
+                SYN | ACK,
+                0,
+                0,
+                NULL,
+                0
+            );
+            sendToLayer3(send_pkt_2, HEADER_LEN);
+            break;
         case ESTABLISHED: 
             // 超时重传，这里或许需要判断一下重传的次数，若重传次数过多应该关闭连接
             if(sock->timeout_counts > RETRANSMIT_LIMIT) {
@@ -116,6 +134,7 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
                 sock->timeout_counts += 1;
                 tcp_retransmit_timer(sock);
             }
+            break;
         default:
             printf("[超时处理] 未解决的状态 state: %d.\n", sock->state);
     }

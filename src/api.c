@@ -254,6 +254,8 @@ int tcp_send(tju_tcp_t* sock, const void *buffer, int len){
 
 int tcp_recv(tju_tcp_t* sock, void *buffer, int len){
      while(sock->received_len <= 0){
+         printf(RED "[接收数据] 缓冲区无数据.\n" RESET);
+         sleep(1);
         // 阻塞
     }
     while(pthread_mutex_lock(&(sock->recv_lock)) != 0); // 加锁
