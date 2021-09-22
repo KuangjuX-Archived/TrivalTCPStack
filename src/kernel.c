@@ -35,15 +35,15 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt) {
 
     if(flag == ACK) {
         handle_success_ack(sock);
-        printf("[收到ACK] 接收到ACK.\n");
+        // printf("[收到ACK] 接收到ACK.\n");
         // 此处为发送方，收到接收方传来的ACK
         // 需要检查是否有“捎带”的数据
         uint32_t seq = get_seq(pkt);
-        printf("[收到ACK] 序列号 seq 为: %d.\n", seq);
+        // printf("[收到ACK] 序列号 seq 为: %d.\n", seq);
         sock->window.wnd_send->base = seq + get_plen(pkt) - get_hlen(pkt);
         uint32_t base = sock->window.wnd_send->base;
         uint32_t next_seq = sock->window.wnd_send->nextseq;
-        printf("[收到ACK] 窗口基准 base 为: %d, 下一个要发送的分组序列号 next_seq 为: %d.\n", base, next_seq);
+        // printf("[收到ACK] 窗口基准 base 为: %d, 下一个要发送的分组序列号 next_seq 为: %d.\n", base, next_seq);
         if(base == next_seq) {
             tcp_stop_timer(sock);
         }else {
@@ -126,7 +126,7 @@ int onTCPPocket(char* pkt){
 
     tju_packet_t* packet = buf_to_packet(pkt);
     if(!tcp_check(packet)) {
-        printf("tcp check error.\n");
+        printf("[分组损坏] 丢弃分组.\n");
         return -1;
     }
     if(packet->data != NULL) {

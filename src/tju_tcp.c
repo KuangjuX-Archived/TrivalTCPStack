@@ -467,6 +467,7 @@ _Noreturn void* tcp_send_stream(void* arg) {
                 memcpy(ptr, buf, len);
                 char* msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 
                     DEFAULT_HEADER_LEN, plen, NO_FLAG, adv_wnd, 0, buf, len);
+                printf("[发送分组] 序列号为: %d.\n", seq);
                 sendToLayer3(msg, plen);
                 sock->window.wnd_send->nextseq += len;
             } else if(base == seq) {
