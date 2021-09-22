@@ -429,7 +429,7 @@ _Noreturn void* tcp_send_stream(void* arg) {
     // 监听缓冲区中的数据
     for(;;) {
         // printf("发送循环第%d轮 \n",x);
-        x++;
+        // x++;
         if(sock->sending_len > 0) {
             int improve_flag = improve_send_wnd(sock);
             if(!improve_flag) {
@@ -453,7 +453,7 @@ _Noreturn void* tcp_send_stream(void* arg) {
             int left_size = sock->sending_len - len;
             if(left_size > 0) {
                 // 若有剩余数据则向前拷贝
-                memcpy(sock->sending_buf, sock->sending_buf + len, left_size);
+                memcpy(sock->sending_buf, sock->sending_buf + len - 2, left_size);
             }
             // 更新socket发送缓冲区的长度
             sock->sending_len -= len;
