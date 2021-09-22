@@ -428,32 +428,98 @@ int improve_send_wnd(tju_tcp_t* sock){
 
 ## 拥塞控制
 
+### 简介
+
+拥塞控制是TCP中重要的一个部分，为了防止单个tcp连接无限占用带宽导致的囚徒困境，拥塞控制部分限制了在相对稳定情况下tcp连接自适应网络情况保持最好的传输效率。
+
+![](image/grow.png)
+如图所示，发送速率过高会导致排队时延无限增长，所以，通过自适应的算法取得一个合适的拥塞控制值是非常有必要的。
+
+## 拥塞状态
+
+对于本项目，拥塞状态分为三部分，以及两个预定义值
+
+````c
+// TCP 拥塞控制状态
+#define SLOW_START 0
+#define CONGESTION_AVOIDANCE 1
+#define FAST_RECOVERY 2
+// 预定义值 测试需求所以搞笑了
+#define IW 3*MAX_DLEN
+#define SMSS MAX_DLEN
+````
 ### Slow Start（慢启动）
-
 （ssthresh：slow start thresh，慢启动门限值）
-
 当cwnd的值小于 ssthresh 时，TCP 则处于 slow start 阶段，每收到一个 ACK，cwnd的值就会加1。
-
 经过一个RTT的时间，cwnd的值就会变成原来的两倍，为指数增长。
 
 ### Congestion Avoidance（拥塞避免）
-
 当 cwnd 的值超过 ssthresh 时，就会进入 Congestion Avoidance 阶段，在该阶段下，cwnd以线性方式增长，大约每经过一个 RTT，cwnd 的值就会加1
-
 ### Fast Retransmit（快重传）
-
 按照拥塞避免算法中 cwnd 的增长趋势，迟早会造成拥塞（一般通过是否丢包来判断是否发生了拥塞）。
-
 如果中网络中发生了丢包，通过等待一个 RTO 时间后再进行重传，是非常耗时的，因为 RTO通常设置得会比较大（避免伪重传：不必要的重传）。
-
 快重传的思想是：只要发送方收到了三个重复的 ACK，就会立马重传，而不用等到 RTO 到达（如果没有3个重复的 ACK 而包丢失了，就只能超时重传）；
-
 并且将 ssthresh 的值设置为当前 cwnd 的一半，而cwnd减为1，重回slow start阶段。
 
 ### Fast Recovery（快速恢复）算法。
-
 当收到三个重复的 ACK 或是超过了 RTO 时间且尚未收到某个数据包的 ACK，Reno 就会认为丢包了，并认定网络中发生了拥塞。
-
 Reno 会把当前的 ssthresh 的值设置为当前 cwnd 的一半，但是并不会回到 slow start 阶段，而是将cwnd设置为（更新后的）ssthresh+3MSS，之后cwnd呈线性增长。
 
+## 状态转换
+
+状态机
+
+![](image/状态机.png)
+**对于正确返回ack的情况的函数**
+
+````c
+void handle_success_ack(tju_tcp_t* sock){
+    if(sock->con_status==SLOW_START){
+        //慢启动时则每收到一个ack就增加一个smss
+        sock->cwnd=sock->cwnd+SMSS;
+        if(sock->cwnd>sock->ssthresh){
+            //如果超出阈值则进入拥塞避免状态
+            sock->con_status=CONGESTION_AVOIDANCE;
+        }
+    }else if(sock->con_status==CONGESTION_AVOIDANCE){
+        //根据rfc 在拥塞避免时 窗口线性增长
+         sock->cwnd=sock->cwnd+SMSS*(SMSS/sock->cwnd);
+    }else if(sock->con_status==FAST_RECOVERY){
+        //快速重传则增加一个SMSS然后变为拥塞避免
+        sock->cwnd=sock->cwnd+SMSS;
+        sock->con_status=CONGESTION_AVOIDANCE
+    }else{
+        printf("handle_success_ack 出现未定义行为\n");
+    }
+}
+````
+
+**超时处理的函数**
+
+````c
+void handle_loss_ack(tju_tcp_t* sock) {
+    //计算超时次数
+    int timeout_counts=sock->timeout_counts%4;
+    if(sock->con_status==SLOW_START){
+        //慢启动则将窗口变为一个SMSS然后阈值减半到目前窗口大小的一半
+        sock->ssthresh=(sock->cwnd+1)/2;
+        sock->cwnd=1*SMSS;
+        if(sock->cwnd>sock->ssthresh){
+            sock->con_status=CONGESTION_AVOIDANCE;
+        }
+    }else if(sock->con_status==CONGESTION_AVOIDANCE&&timeout_counts==3){
+        //如果超时三次则进入快速重传
+        sock->ssthresh=(sock->cwnd+1)/2;
+        sock->cwnd=sock->ssthresh+3*SMSS;
+        sock->con_status=FAST_RECOVERY;
+    }else if(sock->con_status==FAST_RECOVERY){
+        //如果快速重传超时则进入慢启动
+        sock->ssthresh=(sock->cwnd+1)/2;
+        sock->cwnd=3*sock->ssthresh;
+        sock->con_status=SLOW_START;
+    }else{
+        printf("不存在相应状态\n");
+    }
+}
+````
 ![](image/拥塞控制.png)
