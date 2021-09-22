@@ -72,8 +72,22 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt) {
             // 接受到了之后的seq
             // 选择丢弃或者存起来(选择重传)
 
-            // 这里先丢弃
-            printf("[处理分组] 失序的序列号.\n");
+            // 这里先丢弃,应当向对方发送上一次的ACK
+            char* send_pkt = create_packet_buf(
+                sock->established_local_addr.port,
+                sock->established_remote_addr.port,
+                sock->window.wnd_recv->expect_seq,
+                0,
+                HEADER_LEN,
+                HEADER_LEN,
+                ACK,
+                100,
+                0,
+                NULL,
+                0
+            );
+            sendToLayer3(send_pkt, HEADER_LEN);
+            printf(RED "[处理分组] 失序的序列号, 发送ACK.\n" RESET);
             return 0;
         }else if(seq == expected_seq) {
             // 向对方发送ACK

@@ -42,9 +42,9 @@ void tcp_init_timer(
 
 void tcp_init_rtt(struct tju_tcp_t* sock) {
     sock->rtt_timer = (rtt_timer_t*)malloc(sizeof(rtt_timer_t));
-    sock->rtt_timer->estimated_rtt = 5;
-    sock->rtt_timer->dev_rtt = 5;
-    sock->rtt_timer->timeout = 5;
+    sock->rtt_timer->estimated_rtt = 3;
+    sock->rtt_timer->dev_rtt = 3;
+    sock->rtt_timer->timeout = 3;
     sock->rtt_timer->timer_thread = 0;
 }
 
@@ -181,8 +181,8 @@ void tcp_stop_timer(tju_tcp_t* sock) {
 
 // 超时重传函数处理
 void tcp_retransmit_timer(tju_tcp_t* sock) {
-    uint32_t base = sock->window.wnd_send->base % TCP_SEND_WINDOW_SIZE;
-    uint32_t next_seq = sock->window.wnd_send->nextseq % TCP_SEND_WINDOW_SIZE;
+    uint32_t base = sock->window.wnd_send->base;
+    uint32_t next_seq = sock->window.wnd_send->nextseq;
     int len = next_seq - base;
     
     if (len < 0) {

@@ -80,7 +80,6 @@ int tcp_rcv_state_server(
                 return 0;
             }else {
                 // 当flags不是SYN_SENT，暂时忽略
-                printf("TrivialTCP should receive SYN_SENT pakcet.\n");
                 return -1;
             }
         case SYN_RECV:
@@ -453,7 +452,7 @@ _Noreturn void* tcp_send_stream(void* arg) {
             int left_size = sock->sending_len - len;
             if(left_size > 0) {
                 // 若有剩余数据则向前拷贝
-                memcpy(sock->sending_buf, sock->sending_buf + len - 2, left_size);
+                memcpy(sock->sending_buf, sock->sending_buf + len, left_size);
             }
             // 更新socket发送缓冲区的长度
             sock->sending_len -= len;
@@ -467,6 +466,7 @@ _Noreturn void* tcp_send_stream(void* arg) {
 
             if(seq < base + window_size) {
                 // 发送数据
+                tcp_start_timer(sock);
                 uint16_t adv_wnd = TCP_RECV_BUFFER_SIZE - sock->received_len;
                 char* ptr = sock->window.wnd_send->send_windows + sock->window.wnd_send->nextseq;
                 memcpy(ptr, buf, len);
@@ -479,7 +479,8 @@ _Noreturn void* tcp_send_stream(void* arg) {
                 printf(YEL "[发送分组] 将发送的序列号为: %d.\n" RESET, sock->window.wnd_send->nextseq);
             } else if(base == seq) {
                 // 开始计时
-                tcp_start_timer(sock);
+                // tcp_start_timer(sock);
+                tcp_stop_timer(sock);
                 sock->window.wnd_send->nextseq += len;
             }else {
                 printf("[发送线程] 发送窗口已满 seq: %d, base: %d.\n", seq, base);
