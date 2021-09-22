@@ -8,7 +8,6 @@ int main(int argc, char **argv) {
     startSimulation();
 
     tju_tcp_t* my_socket = tcp_socket();
-    // printf("my_tcp state %d\n", my_socket->state);
     
     tju_sock_addr target_addr;
     target_addr.ip = inet_network("10.0.0.3");
@@ -18,7 +17,7 @@ int main(int argc, char **argv) {
     for(int i = 10; i < 99; i++) {
         char* msg = (char*)malloc(7);
         sprintf(msg, "echo %d", i);
-        printf(RED "[发送消息] %s.\n" RESET, msg);
+        printf(GRN "[发送消息] %s.\n" RESET, msg);
         tcp_send(my_socket, msg, 7);
         // sleep(1);
     }

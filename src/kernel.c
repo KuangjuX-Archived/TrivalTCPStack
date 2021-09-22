@@ -41,10 +41,11 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt) {
         uint32_t seq = get_seq(pkt);
         // printf("[收到ACK] 序列号 seq 为: %d.\n", seq);
         uint16_t len = get_plen(pkt) - get_hlen(pkt);
-        if (len > 0) {
-            sock->window.wnd_send->base = seq + len;
-            printf("[接收ACK] 更新 base: %d", sock->window.wnd_send->base);
-        }
+        sock->window.wnd_send->base = seq + len;
+        printf(BLU "[接收ACK] 更新 base: %d.\n" RESET, sock->window.wnd_send->base);
+        // if (len > 0) {
+        //     printf("[接收ACK] 更新 base: %d", sock->window.wnd_send->base);
+        // }
         // sock->window.wnd_send->base = seq + get_plen(pkt) - get_hlen(pkt);
         uint32_t base = sock->window.wnd_send->base;
         uint32_t next_seq = sock->window.wnd_send->nextseq;
@@ -200,10 +201,10 @@ int onTCPPocket(char* pkt){
 不可以修改此函数实现
 */
 void sendToLayer3(char* packet_buf, int packet_len){
-    // if (packet_len > MAX_LEN){
-    //     printf("ERROR: 不能发送超过 MAX_LEN 长度的packet, 防止IP层进行分片\n");
-    //     return;
-    // }
+    if (packet_len > MAX_LEN){
+        printf(RED "[发送给IP协议]: (ERROR) 不能发送超过 MAX_LEN 长度的分组, 防止IP层进行分片!\n" RESET);
+        return;
+    }
 
     // 获取hostname 根据hostname 判断是客户端还是服务端
     char hostname[8];

@@ -226,7 +226,7 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
     sock->window.wnd_send->base = 0;
     sock->window.wnd_send->nextseq = 0;
 
-    printf("Client connect success.\n");
+    printf("[tcp_connect] 客户端连接成功.\n");
     return 0;
 }
 

@@ -183,11 +183,16 @@ void tcp_stop_timer(tju_tcp_t* sock) {
 void tcp_retransmit_timer(tju_tcp_t* sock) {
     uint32_t base = sock->window.wnd_send->base % TCP_SEND_WINDOW_SIZE;
     uint32_t next_seq = sock->window.wnd_send->nextseq % TCP_SEND_WINDOW_SIZE;
-    uint32_t len = next_seq - base;
+    int len = next_seq - base;
     
     if (len < 0) {
         printf(RED "[重传分组] base: %d next_seq: %d len: %d.\n" RESET, base, next_seq, len);
         printf(RED "[重传分组] len 为负数.\n" RESET);
+        exit(0);
+    }
+
+    if (len > MAX_LEN) {
+        printf(RED "[重传分组](tcp_retransmit_timer) 不能发送超过 MAX_LEN 的分组, 其中 len = %d, base = %d, next_seq = %d.\n" RESET, len, base, next_seq);
         exit(0);
     }
     char* buf = (char*)malloc(len);
@@ -201,7 +206,7 @@ void tcp_retransmit_timer(tju_tcp_t* sock) {
     
     // 打开计时器
     tcp_start_timer(sock);
-    printf("[重传分组] 发送packet.\n");
+    printf("[重传分组] 发送分组.\n");
     sendToLayer3(msg, plen);
 }
 
