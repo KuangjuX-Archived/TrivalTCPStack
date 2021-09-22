@@ -85,8 +85,23 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
     // 这里需要针对socket的状态进行不同的操作
     switch(sock->state) {
         case SYN_SENT:
-            // 当处于SYN_SENT状态超时时应当发送RST标志位的packet
-            tcp_send_rst(sock);
+            // 此时客户端应当重新向服务端发送分组
+            // tcp_send_rst(sock);
+            tcp_start_timer(sock);
+            char* send_pkt = create_packet_buf(
+                sock->established_local_addr.port,
+                sock->bind_addr.port,
+                0,
+                0,
+                HEADER_LEN,
+                HEADER_LEN,
+                SYN,
+                TCP_RECV_BUFFER_SIZE - sock->received_len,
+                0,
+                NULL,
+                0
+            );
+            sendToLayer3(send_pkt, HEADER_LEN);
         case SYN_RECV:  
             tcp_send_rst(sock);
         case ESTABLISHED: 
@@ -102,7 +117,7 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
                 tcp_retransmit_timer(sock);
             }
         default:
-            printf("[超时处理] 未解决的状态.\n");
+            printf("[超时处理] 未解决的状态 state: %d.\n", sock->state);
     }
 }
 
@@ -111,7 +126,7 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
 void tcp_start_timer(tju_tcp_t* sock) {
     // 当计时器仍在运行时，我们需要首先关闭计时器，再重新开启计时器
     if(sock->rtt_timer->started == 1) {
-        printf("[Timer] 计时器已经开启，不能重复开启.\n");
+        // printf("[Timer] 计时器已经开启，不能重复开启.\n");
         // return;
         tcp_stop_timer(sock);
     }
@@ -130,7 +145,7 @@ void tcp_start_timer(tju_tcp_t* sock) {
 void tcp_stop_timer(tju_tcp_t* sock) {
     // 当计时器i已经停止时，我们只需要退出即可
     if(sock->rtt_timer->started == 0) {
-        printf("[Timer] 计时器已经中断，不能重复中断.\n");
+        // printf("[Timer] 计时器已经中断，不能重复中断.\n");
         return;
     }
     pthread_mutex_lock(&sock->rtt_timer->timer_lock);
@@ -147,10 +162,15 @@ void tcp_stop_timer(tju_tcp_t* sock) {
 
 // 超时重传函数处理
 void tcp_retransmit_timer(tju_tcp_t* sock) {
-    int base = sock->window.wnd_send->base % TCP_SEND_WINDOW_SIZE;
-    int next_seq = sock->window.wnd_send->nextseq % TCP_SEND_WINDOW_SIZE;
-    int len = next_seq - base;
-    printf("[重传分组] base: %d next_seq: %d len: %d.\n", base, next_seq, len);
+    uint32_t base = sock->window.wnd_send->base % TCP_SEND_WINDOW_SIZE;
+    uint32_t next_seq = sock->window.wnd_send->nextseq % TCP_SEND_WINDOW_SIZE;
+    uint32_t len = next_seq - base;
+    
+    if (len < 0) {
+        printf(RED "[重传分组] base: %d next_seq: %d len: %d.\n" RESET, base, next_seq, len);
+        printf(RED "[重传分组] len 为负数.\n" RESET);
+        exit(0);
+    }
     char* buf = (char*)malloc(len);
     memcpy(buf, sock->window.wnd_send->send_windows + base, len);
 

@@ -46,10 +46,12 @@ int main(int argc, char **argv) {
     }
 
     char buf[512];
-   for(int i = 10; i < 99; i++) {
+   for(int i = 10; i < 50; i++) {
        tcp_recv(conn_sock, buf, 7);
-       printf("[接收消息] %s\n", buf);
+       printf(RED "[接收消息] %s\n" RESET, buf);
+       sleep(1);
    }
+   printf(RED "[服务端] 接收完成.\n" RESET);
     while(TRUE){}
 
     return EXIT_SUCCESS;

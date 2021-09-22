@@ -399,8 +399,8 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
 
 ```c
 int improve_send_wnd(tju_tcp_t* sock){
-    float rwnd= (float)sock->window.wnd_send->rwnd;
-    float data_on_way=(float)sock->window.wnd_send->nextseq-sock->window.wnd_send->base;
+    float rwnd = (float)sock->window.wnd_send->rwnd;
+    float data_on_way = (float)sock->window.wnd_send->nextseq - sock->window.wnd_send->base;
     if((rwnd-data_on_way)/rwnd<IMPROVED_WINDOW_THRESHOLD){
         return 0;
     }else{

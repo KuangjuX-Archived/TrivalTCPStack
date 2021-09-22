@@ -32,7 +32,7 @@ int tcp_rcv_state_server(
     tju_sock_addr* conn_addr
 ) {
     uint8_t flags = get_flags(pkt);
-    sock->window.wnd_send->rwnd= get_advertised_window(pkt);
+    sock->window.wnd_send->rwnd = get_advertised_window(pkt);
     int hashval = cal_hash(sock->bind_addr.ip, sock->bind_addr.port, conn_addr->ip, conn_addr->port);
     switch (sock->listen_state[hashval]) {
         case CLOSED:
@@ -72,7 +72,9 @@ int tcp_rcv_state_server(
                 tcp_start_timer(sock);
                 sendToLayer3(send_pkt, len);
                 return 0;
-            } else {
+            } else if(flags == RST) {
+                return 0;
+            }else {
                 // 当flags不是SYN_SENT，暂时忽略
                 printf("TrivialTCP should receive SYN_SENT pakcet.\n");
                 return -1;
@@ -98,7 +100,7 @@ int tcp_rcv_state_server(
                 return 0;
             } else if(flags == RST) {
                 // 收到RST，重置TCP连接
-                tcp_init_listener(sock);
+                // tcp_init_listener(sock);
             } else {
                 // 当flags不是 ESTABLSHED 时，暂时忽略
                 printf("TrivialTCP should receive ESTABLISHED packet.\n");
@@ -128,7 +130,7 @@ int tcp_rcv_state_client(
                 int seq = get_seq(pkt) + 1;
                 int ack = get_seq(pkt) + 1;
                 // 构建packet发送给服务端
-                uint16_t adv_wnd=TCP_RECV_BUFFER_SIZE-sock->received_len;
+                uint16_t adv_wnd = TCP_RECV_BUFFER_SIZE-sock->received_len;
                 char* send_pkt = create_packet_buf(
                     sock->established_local_addr.port,
                     conn_sock->port,
@@ -297,7 +299,7 @@ void tcp_send_ack(tju_tcp_t* sock) {
     uint32_t seq = sock->window.wnd_recv->expect_seq;
     uint32_t ack = seq;
     int rwnd = TCP_RECV_BUFFER_SIZE-sock->received_len;
-    printf("[ACK] %d,%d\n",rwnd,sock->received_len);
+    // printf("[ACK] %d,%d\n",rwnd,sock->received_len);
     char* send_pkt = create_packet_buf(
         sock->established_local_addr.port,
         sock->established_remote_addr.port,
@@ -431,8 +433,8 @@ _Noreturn void* tcp_send_stream(void* arg) {
                 sleep(1);
                 continue;
             }
-            int data_on_way=sock->window.wnd_send->nextseq-sock->window.wnd_send->base;
-            int uwnd=sock->window.wnd_send->rwnd-data_on_way;
+            int data_on_way = sock->window.wnd_send->nextseq - sock->window.wnd_send->base;
+            int uwnd = sock->window.wnd_send->rwnd-data_on_way;
             int wnd_size = min_among_3(sock->cwnd,uwnd,sock->sending_len);
 
             pthread_mutex_lock(&sock->send_lock);
@@ -466,13 +468,16 @@ _Noreturn void* tcp_send_stream(void* arg) {
                 char* msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 
                     DEFAULT_HEADER_LEN, plen, NO_FLAG, adv_wnd, 0, buf, len);
                 sendToLayer3(msg, plen);
-            }
-            if(base == seq) {
+                sock->window.wnd_send->nextseq += len;
+            } else if(base == seq) {
                 // 开始计时
                 tcp_start_timer(sock);
+                sock->window.wnd_send->nextseq += len;
+            }else {
+                printf("[发送线程] 发送窗口已满 seq: %d, base: %d.\n", seq, base);
+                sleep(1);
             }
             // 更新nextseq的值
-            sock->window.wnd_send->nextseq += len;
             // 更新接受窗口的值
         }else {
             // 休息，防止发送线程不断轮询造成CPU负载过重
@@ -507,8 +512,8 @@ void load_data_to_sending_buffer(tju_tcp_t *sock, const void *buffer, int len) {
 //根据sending len自动切分tcp data发送buffer中内容到layer3,最后一个包的
 
 int improve_send_wnd(tju_tcp_t* sock){
-    float rwnd= (float)sock->window.wnd_send->rwnd;
-    float data_on_way=(float)sock->window.wnd_send->nextseq-sock->window.wnd_send->base;
+    float rwnd = (float)sock->window.wnd_send->rwnd;
+    float data_on_way = (float)sock->window.wnd_send->nextseq-sock->window.wnd_send->base;
     if(rwnd<0.1||(rwnd-data_on_way)/rwnd<IMPROVED_WINDOW_THRESHOLD){
         // printf("[流量控制] 只发送header 对方rwnd为: %d 计算阈值为%f 路上文件大小：%f\n",sock->window.wnd_send->rwnd,(rwnd-data_on_way)/rwnd,data_on_way);
         send_only_header(sock);

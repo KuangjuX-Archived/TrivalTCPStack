@@ -16,13 +16,13 @@
 */
 
 // 建立连接后接收分组需要通过tju_handle_packet，这里需要判断ack和seq 
-int tju_handle_packet(tju_tcp_t* sock, char* pkt){
+int tju_handle_packet(tju_tcp_t* sock, char* pkt) {
     uint8_t flag = get_flags(pkt);
     uint32_t seq = get_seq(pkt);
     uint32_t adv_wnd= get_advertised_window(pkt);
     sock->window.wnd_send->rwnd=adv_wnd;
     // printf("package flag %d \n",flag);
-    if(flag==HEAD){
+    if(flag == HEAD){
         // printf("[RECEIVE] only head.\n");
         back_only_header(sock);
         return 0;
@@ -35,23 +35,24 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
 
     if(flag == ACK) {
         handle_success_ack(sock);
-        printf("receive ACK.\n");
+        printf("[收到ACK] 接收到ACK.\n");
         // 此处为发送方，收到接收方传来的ACK
         // 需要检查是否有“捎带”的数据
         uint32_t seq = get_seq(pkt);
-        printf("seq: %d.\n", seq);
+        printf("[收到ACK] 序列号 seq 为: %d.\n", seq);
         sock->window.wnd_send->base = seq + get_plen(pkt) - get_hlen(pkt);
         uint32_t base = sock->window.wnd_send->base;
         uint32_t next_seq = sock->window.wnd_send->nextseq;
-        printf("base: %d, next_seq: %d.\n", base, next_seq);
+        printf("[收到ACK] 窗口基准 base 为: %d, 下一个要发送的分组序列号 next_seq 为: %d.\n", base, next_seq);
         if(base == next_seq) {
             tcp_stop_timer(sock);
         }else {
             tcp_start_timer(sock);
         }
 
-        if(get_plen(pkt) <= get_hlen(pkt)) {
-            return 0;
+        if(get_plen(pkt) < get_hlen(pkt)) {
+            printf(RED "[接收方] 收到非法的 pakcet len, 退出程序.\n" RESET);
+            exit(0);
         }
         // 此时有"捎带"数据，应当继续执行将"捎带"数据存入到received_buf中
 
@@ -59,8 +60,8 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt){
         // 此处为接收方，收到发送方传来的ACK
         // 这里必须保证seq和expected_seq相同，否则是失序的packet
         uint32_t expected_seq = sock->window.wnd_recv->expect_seq;
-        printf("seq: %d.\n", seq);
-        printf("expected_seq: %d.\n", expected_seq);
+        printf("[收到分组] 序列号 seq 为: %d.\n", seq);
+        printf("[收到分组] 期待的序列号 expected_seq 为: %d.\n", expected_seq);
         if(seq > expected_seq) {
             // 接受到了之后的seq
             // 选择丢弃或者存起来(选择重传)
@@ -252,7 +253,7 @@ void* receive_thread(void* arg){
             // 通知内核收到一个完整的TCP报文
             if (onTCPPocket(pkt) < 0) {
                 // 根据 TCP 标准，此时应当向对方发送RST标志位
-                printf("[内核线程] 向对方发送RST标志位.\n");
+                // printf("[内核线程] 向对方发送RST标志位.\n");
             }
             free(pkt);
         }
@@ -351,7 +352,7 @@ void handle_success_ack(tju_tcp_t* sock){
 */
 
 void back_only_header(tju_tcp_t* sock){
-    printf("%d %d \n",sock->received_len,TCP_RECV_BUFFER_SIZE-sock->received_len);
+    // printf("%d %d \n",sock->received_len,TCP_RECV_BUFFER_SIZE-sock->received_len);
     uint16_t adv_wnd = TCP_RECV_BUFFER_SIZE-sock->received_len;
     uint16_t plen = DEFAULT_HEADER_LEN;
     uint32_t seq = sock->window.wnd_send->nextseq;

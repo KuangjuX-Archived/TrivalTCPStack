@@ -111,7 +111,7 @@ int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
     memcpy(conn_sock, listen_sock, sizeof(tju_tcp_t));
 
     // 如果全连接队列为空，则阻塞等待
-    printf("Wait connection......\n");
+    printf("[服务端] 等待连接......\n");
     while(sockqueue_is_empty(listen_sock->accept_queue)){}
 
     tju_sock_addr local_addr, remote_addr;
@@ -149,7 +149,7 @@ int tcp_accept(tju_tcp_t* listen_sock, tju_tcp_t* conn_sock) {
     conn_sock->window.wnd_send->base = 0;
     conn_sock->window.wnd_send->nextseq = 0;
     pthread_create(&conn_sock->send_thread, NULL, tcp_send_stream, (void*)conn_sock);
-    printf("Connection established.\n");
+    printf("[服务端] 建立连接.\n");
 
     // status code: find a connect socket
     return 0;
@@ -170,6 +170,8 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
     local_addr.ip = inet_network("10.0.0.2");
     local_addr.port = 5678; // 连接方进行connect连接的时候 内核中是随机分配一个可用的端口
     sock->established_local_addr = local_addr;
+    // sock->target_addr = target_addr;
+    sock->bind_addr = target_addr;
 
     // 修改socket的状态
     sock->state = SYN_SENT;
@@ -187,7 +189,7 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
 
     // 创建客户端socket并将其加入到哈希表中
     // 这里发送SYN_SENT packet向服务端发送请求
-    uint16_t adv_wnd = TCP_RECV_BUFFER_SIZE-sock->received_len;
+    uint16_t adv_wnd = TCP_RECV_BUFFER_SIZE - sock->received_len;
     char* send_pkt = create_packet_buf(
         local_addr.port,
         target_addr.port,
@@ -205,7 +207,7 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
     sendToLayer3(send_pkt, HEADER_LEN);
 
     // 这里阻塞直到socket的状态变为ESTABLISHED
-    printf("Wait connection......\n");
+    printf("[客户端] 等待连接......\n");
     while(sock->state != ESTABLISHED){}
     pthread_create(&sock->send_thread, NULL, tcp_send_stream, (void*)sock);
 
@@ -266,7 +268,7 @@ int tcp_recv(tju_tcp_t* sock, void *buffer, int len){
     memcpy(buffer, sock->received_buf, read_len);
 
     if(read_len < sock->received_len) { // 还剩下一些
-        memcpy(sock->received_buf,sock->received_buf+read_len,sock->received_len-read_len);
+        memcpy(sock->received_buf, sock->received_buf + read_len, sock->received_len-read_len);
         sock->received_len -= read_len;
     }else{
         sock->received_len = 0;
