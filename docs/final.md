@@ -473,6 +473,15 @@ Reno 会把当前的 ssthresh 的值设置为当前 cwnd 的一半，但是并�
 ## 三次握手
 ![](image/shake_test.jpg)  
 ## 可靠传输
+
+**客户端：**
+
+![](image/client_transmit.png)
+
+**服务端：**
+
+![](image/server_transmit.png)
+
 ## 拥塞控制
 ![](image/con_test.png)
 ### 位置1
