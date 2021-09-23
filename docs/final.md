@@ -507,35 +507,14 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
 
 改进窗口算法可以从发送方的角度避免SWS，而且在开销很小的情况下实现完全限度的避免SWS。
 
-关键函数实现如下所示：
+关键函数```improve_send_wnd```实现如下表述：
 
-```c
-int improve_send_wnd(tju_tcp_t* sock){
-    float rwnd = (float)sock->window.wnd_send->rwnd;
-    float data_on_way = (float)sock->window.wnd_send->nextseq - sock->window.wnd_send->base;
-    if((rwnd-data_on_way)/rwnd<IMPROVED_WINDOW_THRESHOLD){
-        return 0;
-    }else{
-        return 1;
-    }
-}
-```
+> 在本函数中，会根据对方的rwnd和自身记录的已发送和对方已ack的大小计算出在路上的数据总量，然后用uwnd/rwnd得出一个比例，
+> 若小于预设的阈值（通常为25%）那么就发送数据，否则就只发送header。
 
-在本函数中，会根据对方的rwnd和自身记录的已发送和对方已ack的大小计算出在路上的数据总量，然后用uwnd/rwnd得出一个比例，
-若小于预设的阈值（通常为25%）那么就发送数据，否则就等待对方空闲的足够多为止。
 
-### 改善确认算法
-
-前提：receiver 才能控制ACK 需要一个timer计数
-
-当收到一个TCP段的时候，如果同时满足push bit  没有被设置并且没有revised window需要发回，那么就设置一个timer，间隔时间为大致为200ms~300ms，最合适的时间为自适应算法。
-
-`void handle_delay_ack(tju_tcp_t* sock, char* pkt)`
-
-在 `handle_TCP_PKT` 函数调用于控制ACK返回的延迟具体逻辑详见下图：
-
-![](image/flow.png)
-
+关键函数```send_only_head()``和```send_head_back()```皆为类似的逻辑：
+> 生成一个只有header的包，然后发送给对方，为了识别，增加了两个Flag 一个为HEAD 一个为BACK_HEAD
 
 
 ## 拥塞控制
@@ -581,57 +560,37 @@ Reno 会把当前的 ssthresh 的值设置为当前 cwnd 的一半，但是并�
 
 状态机
 
-![](image/状态机.png)
-**对于正确返回ack的情况的函数**
+![](image/con_FSM.png)
+**对于正确返回ack的情况的函数handle_success_ack**
 
-````c
-void handle_success_ack(tju_tcp_t* sock){
-    if(sock->con_status==SLOW_START){
-        //慢启动时则每收到一个ack就增加一个smss
-        sock->cwnd=sock->cwnd+SMSS;
-        if(sock->cwnd>sock->ssthresh){
-            //如果超出阈值则进入拥塞避免状态
-            sock->con_status=CONGESTION_AVOIDANCE;
-        }
-    }else if(sock->con_status==CONGESTION_AVOIDANCE){
-        //根据rfc 在拥塞避免时 窗口线性增长
-         sock->cwnd=sock->cwnd+SMSS*(SMSS/sock->cwnd);
-    }else if(sock->con_status==FAST_RECOVERY){
-        //快速重传则增加一个SMSS然后变为拥塞避免
-        sock->cwnd=sock->cwnd+SMSS;
-        sock->con_status=CONGESTION_AVOIDANCE
-    }else{
-        printf("handle_success_ack 出现未定义行为\n");
-    }
-}
-````
+> 首先判断当前状态，然后根据上图中的状态机对cwnd进行相应更改，并且将dupACKCount设置为零。然后再根据状态机进行
+> 状态的变换。
 
-**超时处理的函数 **
+**超时处理的函数handle_loss_ack **
 
-````c
-void handle_loss_ack(tju_tcp_t* sock) {
-    //计算超时次数
-    int timeout_counts=sock->timeout_counts%4;
-    if(sock->con_status==SLOW_START){
-        //慢启动则将窗口变为一个SMSS然后阈值减半到目前窗口大小的一半
-        sock->ssthresh=(sock->cwnd+1)/2;
-        sock->cwnd=1*SMSS;
-        if(sock->cwnd>sock->ssthresh){
-            sock->con_status=CONGESTION_AVOIDANCE;
-        }
-    }else if(sock->con_status==CONGESTION_AVOIDANCE&&timeout_counts==3){
-        //如果超时三次则进入快速重传
-        sock->ssthresh=(sock->cwnd+1)/2;
-        sock->cwnd=sock->ssthresh+3*SMSS;
-        sock->con_status=FAST_RECOVERY;
-    }else if(sock->con_status==FAST_RECOVERY){
-        //如果快速重传超时则进入慢启动
-        sock->ssthresh=(sock->cwnd+1)/2;
-        sock->cwnd=3*sock->ssthresh;
-        sock->con_status=SLOW_START;
-    }else{
-        printf("不存在相应状态\n");
-    }
-}
-````
+> 依旧根据如上图的FSM图对超市状态进行相关的处理，更改cwnd和threshold。
 ![](image/拥塞控制.png)
+
+# 实验结果以及分析
+## 三次握手
+![](image/shake_test.jpg)  
+## 可靠传输
+## 拥塞控制
+![](image/con_test.png)
+### 位置1
+> 对于第一部分来说很明显是慢启动的指数增长
+### 位置2
+> 位置二出现了一个丢包，导致了ssthresh的降低，并且降低了窗口大小
+### 位置3
+> 丢包导致的进入快速重传模式，阈值降低为一半，但是窗口大小为阈值的三倍，只是略有降低
+### 位置4
+> 窗口大小线性增长，典型的拥塞避免状态
+
+# 个人总结
+对我来说，挑战最大的就是对于整体架构的把握。TCP这个项目整体来说，虽然四个模块的功能划分很清晰
+但是在真正编码的时候耦合的非常厉害，极大的锻炼了我的团队合作能力。两个人同步写代码要做到沟通顺畅。  
+除此之外，这也是我第一次从头开始写一个小型的c语言项目，不像之前的作业仅仅有以两个文件或者有老师搭建好的
+完善的框架，在实验当中我学会了cmakelist的编写和对于不同功能的解耦。在开发的过程中我们也遇到了很多其他的问题
+比如循环编译，在docker环境下调试困难等问题，但我们都很好的克服了。  
+在设计过程中最大的挑战是对于rfc中要点的提炼和自我设计，rfc仅仅会提供一个大致的功能，而具体的代码模块设计
+则需要我们自己来探讨和摸索，极大的锻炼了我们的设计能力。
