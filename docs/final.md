@@ -366,66 +366,15 @@ typedef struct rtt_timer_t {
 
 ![](image/timer.png)
 
-关于定时器如何监测是否超时，首先，我们调用 `time_after()` 来判断是否超时，在该函数中我们新建一个线程开始计时，并通过通道监测信号量：
+关于定时器如何监测是否超时，首先，我们调用 `time_after()` 来判断是否超时，在该函数中我们新建一个线程开始计时，并实时监测是否超时。
 
+首先 `tcp_check_timeout()` 将获取当前的时间，并且获取超时时间 RTT,  然后不断轮询监测是否超时，在实现中我们使用 `difftime(time(NULL), cur_time) < timeout` 来判断是否已经超时。
 
-```c
-// 检查是否超时
-void* tcp_check_timeout(void* arg) {
-    // 这里我们异步监测是否超时，倘若超时则调用回调函数
-    // 否则监测到中断信号返回
-    tju_tcp_t* sock = (tju_tcp_t*)arg;
-    float timeout = sock->rtt_timer->timeout;
-    time_t cur_time = time(NULL);
-    time_t out_time = cur_time + timeout;
-    // 初始化信号量
-    while(time(NULL) < out_time) {
-        if (sock->interrupt_signal == 1) {
-            printf("receive interrupt signal.\n");
-            // 更新RTT的值
-            tcp_ack_update_rtt(sock, time(NULL) - cur_time, 1);
-            sock->rtt_timer->chan = NULL;
-            return NULL;
-        }else {
-            // 休息一会，防止不断轮询导致CPU负载过重
-            sleep(1);
-        }
-    }
-    // 此时超时，调用回调函数
-    sock->rtt_timer->callback(sock);
-}
-```
+当收到 ACK 时，我们向计时器传递信号量并停止计时，重置计时器，即我们需要通过读取 socket 的 `interrupt_signal` 是否为1 。否则则调用回调函数。根据不同的 socket 状态进行处理：
 
-
-当收到 ACK 时，我们向计时器传递信号量并停止计时，重置计时器，否则调用回调函数。根据不同的 socket 状态进行处理：
-
-```c
-// 当计时器超时时的回调函数
-void tcp_write_timer_handler(tju_tcp_t* sock) {
-    printf("timeout.\n");
-    // 这里需要针对socket的状态进行不同的操作
-    switch(sock->state) {
-        case SYN_SENT:
-            tcp_send_syn(sock);
-        case SYN_RECV:  
-            tcp_send_syn_ack(sock);
-        case ESTABLISHED: 
-            // 超时重传，这里或许需要判断一下重传的次数，若重传次数过多应该关闭连接
-            if(sock->timeout_counts > RETRANSMIT_LIMIT) {
-                // 重传次数超限，关闭连接
-                printf("重传次数超限，关闭连接.\n");
-                tcp_outlimit_retransmit(sock);
-            }else {
-                // 重传分组
-                sock->timeout_counts += 1;
-                tcp_retransmit_timer(sock);
-            }
-        default:
-            printf("Unresolved status.\n");
-    }
-}
-
-```
+- 当处于 `SYN_SENT` 时，此时应当向对方重新发送 SYN 标志位的分组。
+- 当处于 `SYN_RECV`时，向对方发送 `RST` 标志位（或者重发分组）。
+- 当处于 `ESTABLISHED` 时， 首先判断是否超出了重传限制，如果超出了重传限制，则直接关闭连接，否则调用 `tcp_restransmit_timer` 重传分组。
 
 **涉及到的方法：**
 - `void tcp_init_timer(tju_tcp_t* sock, void (*retransmit_handler)(unsigned long))`: 初始化定时器并注册回调函数。 参数：待注册socket， 回调函数指针。 无返回值。
