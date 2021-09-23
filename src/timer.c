@@ -126,6 +126,11 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
             break;
         case ESTABLISHED: 
             // 超时重传，这里或许需要判断一下重传的次数，若重传次数过多应该关闭连接
+            if (sock->finished_handshake == 0) {
+                sock->finished_handshake = 1;
+                tcp_send_ack(sock);
+                break;
+            }
             if(sock->timeout_counts > RETRANSMIT_LIMIT) {
                 // 重传次数超限，关闭连接
                 printf("[超时处理] 重传次数超限，关闭连接.\n");

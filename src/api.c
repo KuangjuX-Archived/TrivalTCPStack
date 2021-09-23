@@ -173,6 +173,8 @@ int tcp_connect(tju_tcp_t* sock, tju_sock_addr target_addr) {
     // sock->target_addr = target_addr;
     sock->bind_addr = target_addr;
 
+    sock->finished_handshake = 0;
+
     // 修改socket的状态
     sock->state = SYN_SENT;
 

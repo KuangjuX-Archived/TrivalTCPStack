@@ -100,6 +100,9 @@ typedef struct tju_tcp_t {
 
 	// 监听socket应当有一个数组维护连接状态
 	int listen_state[MAX_SOCK_SIZE];
+	
+	// 是否完成了三次握手
+	int finished_handshake;
 
 } tju_tcp_t;
 
