@@ -31,7 +31,7 @@
     		<td style="width:2%">：</td> 
     		<td style="width:40%;font-weight:normal;border-bottom: 1px solid;text-align:center;font-family:华文仿宋" >计算机科学与技术 </td>   </tr>
         <tr style="font-weight:normal;"> 
-    		<td style="width:20%;text-align:right;">任&nbsp;&nbsp;课&nbsp;&nbsp;教&nbsp;&nbsp;业</td>
+    		<td style="width:20%;text-align:right;">任&nbsp;&nbsp;课&nbsp;&nbsp;教&nbsp;&nbsp;师</td>
     		<td style="width:2%">：</td> 
     		<td style="width:40%;font-weight:normal;border-bottom: 1px solid;text-align:center;font-family:华文仿宋" >石高涛 </td>   </tr>
     </tbody>              
@@ -54,9 +54,18 @@ TrivialTCP 是一个开源的使用C语言编写的TCP协议开源库。
 ### 项目架构示意图  
 ![](image/TrivialTCP.png)  
 ## 问题简述
+IP 层是「不可靠」的，它只负责数据包的发送，但它不保证数据包能够被接收、不保证网络包的按序交付、也不保证网络包中的数据的完整性。  
+如果需要保障网络数据包的可靠性，那么就需要由上层（传输层）的 TCP 协议来负责。
+TCP 是一个工作在传输层的可靠数据传输的服务，它能确保接收端接收的网络包是无损坏、无间隔、非冗余和按序的。  
+**挑战**
+- 阅读TCP相关RFC
+- 完成所给框架基础架构完善
+- 实现连接管理、可靠传输、流量控制、拥塞控制等TCP核心模块
+## TCP模块预览
+![](image/preview.png)
 
 ## 项目功能实现情况
-- **实践要求基本功能**
+- **实践要求功能**
 - [x] 环境搭配
 - [x] 连接管理
 - [x] 计时器
@@ -69,45 +78,136 @@ TrivialTCP 是一个开源的使用C语言编写的TCP协议开源库。
 - [x] 协程
 - [ ] Epoll机制
 
+## 测试结果梗概
+- 完成全部任务
+- 完美通过全部测试
+----
 
-## TCP模块预览
+# 任务分析
 
-![](image/preview.png)
+### 任务分配
+> 除去对基础架构的完善部分，TCP实现的主要功能分为连接管理、可靠传输、流量控制、拥塞控制四大模块。
 
-# 模块简介
+## 四模块任务简要分析
 
-## 可靠传输
+### 可靠传输
 
-通过ACK SEQ来确保TCP段的正确接收，通过校验和等方式确认收到的段是否正确，通过五元组确认是否收到了正确连接的TCP段。
+可靠传输是TCP实现的核心内容，TCP能够保证处理消息不冗余，不缺失，不乱序，不会不完整等可靠特性是基于可靠传输来实现的。  
+TCP通过ACK SEQ来确保TCP段的正确接收，通过校验和等方式确认收到的段是否正确，通过五元组确认是否收到了正确连接的TCP段。
 
-## 流量控制
+### 流量控制
 
-通过改善窗口算法，延迟ACK算法以及Nagle算法，根据接收方的窗口大小，对TCP段的发送进行管理，防止缓冲区收到过多的数据而被迫丢弃或者SWS现象（愚蠢窗口综合征）。
+对于众多多用户多进程主机来说，操作系统是无法保证TCP接收方的接收缓存中的数据能够立即被处理掉，所以为了防止因为缓冲区已满而被迫丢弃已有数据导致的不必要的
+额外带宽流量占用，TCP的流量模块应运而生。  
+流量控制模块通过在TCP segment中添加自己剩余接收窗口大小来让对方获取到应该发送多少数据从而避免溢出的情况。
+流量控制模块通过改善窗口算法，延迟ACK算法以及Nagle算法，根据接收方的窗口大小，对TCP段的发送进行管理，避免SWS现象（愚蠢窗口综合征）。
 
-## 连接管理
+### 连接管理
 
-TCP协议要求客户端和服务端通过三次握手发起连接。首先，由客户端调用 connect() 方法主动向服务端发起连接，向服务端发送带有 SYN 标志段的 packet，当服务端接受到分组后向客户端返回带有 ACK 标志位，随后客户端向服务端发送带有 ACK 标志位的分组，至此三次握手正式完成。
-
+TCP协议要求客户端和服务端通过三次握手发起连接。首先，由客户端调用 connect() 方法主动向服务端发起连接，向服务端发送带有 SYN 标志段的 packet，
+当服务端接受到分组后向客户端返回带有 ACK 标志位，随后客户端向服务端发送带有 ACK 标志位的分组，至此三次握手正式完成。
 断开连接与连接过程类似，同样由一端发起断开连接请求（即发送 FIN 标志位的报文），双方经过协商与状态机转换后最终同时关闭连接并释放资源。
 
-## 拥塞控制
+### 拥塞控制
+根据协议，TCP不应该抢占整个通信信道，若否则会造成整个通信信道的堵塞，而且网络状况非常多变，受到多种因素的制约，TCP无法预定一个预设的数值来判断网络情况。  
+而拥塞控制就是这样一种自适应算法的集合，可以根据RTT以及接收方ACK的情况自适应的调节拥塞窗口来保证整个传输的平稳以及适应通信环境的各种情况。
+拥塞控制算法为数据发生者增设了一个“拥塞窗口（congestion window，cwnd）”，并且有三种拥塞状态，分别是慢启动，拥塞避免和快速恢复。  
+拥塞控制核心要点就是通过目前接受的ACK情况和超时的次数和预设的ssthresh来自适应拥塞窗口大小。
 
-**TCP的种拥塞控制算法**
+----
+# 协议设计
+## 总体设计
+我们小组将整个TCP实现分为四大模块，和其他额外的设计，四大模块的分配方式如上文任务分析提到。
+对于任务分配部分，如下表：  
+**齐呈祥**
+- 连接管理
+- 可靠传输
+- 系统API，线程池，协程（额外工作）   
 
-- 慢启动
+**高树韬**
+- 流量控制
 - 拥塞控制
-- 快重传
-- 快恢复
 
+### 总体设计划分
+![](image/preview.png)
+对于一个完整的TCP流程，最开始的部分是连接管理，先通过连接管理模块完成三次握手，并且要在连接管理模块当中处理各种连接出错的情况。  
+成功建立完整连接后，就由可靠传输负责接手整个传输过程，保证传输的可靠性。而传输的窗口大小则由流量控制和拥塞控制来保证不会出现上述任务分析出现的问题。  
+### 数据结构设计
+**客户端**
+```c
+	int state; // TCP的状态
 
+	tju_sock_addr bind_addr; // 存放bind和listen时该socket绑定的IP和端口
+	// tju_sock_addr target_addr;
+	tju_sock_addr established_local_addr; // 存放建立连接后 本机的 IP和端口
+	tju_sock_addr established_remote_addr; // 存放建立连接后 连接对方的 IP和端口
 
-# 模块详细设计
+	pthread_mutex_t send_lock; // 发送数据锁
+	pthread_t send_thread; // 发送线程
+	char* sending_buf; // 发送数据缓存区
+	int sending_len; // 发送数据缓存长度
+	int sending_capacity; // 发送缓冲区容量
+
+	pthread_mutex_t recv_lock; // 接收数据锁
+	char* received_buf; // 接收数据缓存区
+	int received_len; // 接收数据缓存长度
+	int received_capacity; // 接受缓冲区容量
+
+	pthread_cond_t wait_cond; // 可以被用来唤醒recv函数调用时等待的线程
+
+	window_t window; // 发送和接受窗口
+
+	// 保存的半连接队列id
+	int saved_syn;
+
+	pthread_mutex_t signal_lock;
+	int interrupt_signal;
+
+	// 计时器逻辑
+	struct rtt_timer_t* rtt_timer;
+
+	// 超时次数
+	uint8_t timeout_counts;
+
+	// 这些域仅在server端被使用
+	// 半连接队列
+	struct sock_queue* syn_queue;
+	// 全连接队列
+	struct sock_queue* accept_queue;
+
+    // 拥塞控制相关
+    int con_status; //拥塞窗口状态
+    int cwnd;//拥塞窗口大小
+    int ssthresh;//慢启动阈值
+
+	// 监听socket应当有一个数组维护连接状态
+	int listen_state[MAX_SOCK_SIZE];
+```
+
+**服务端**  
+维持两个list，一个是已建立连接的list，一个是还未建立连接的list。  
+每个list中的item都是跟客户端一致的数据结构用来记录一个TCP连接一侧的所需的状态。
+
+### 协议规则
+**可靠传输FSM**
+![](image/GBNsend_FSM.png)  
+![](image/GBNrecv_FSM.png)  
+**三次握手FSM**
+![](image/shake_FSM.png)  
+![](image/shake_client_FSM.png)  
+**拥塞控制FSM**
+![](image/con_FSM.png)  
+**流量控制**  
+![](image/data_FSM.png)
+----
+# 模块详细实现
 
 ## 可靠传输
 
 ### 完全可信信道上的可靠传输
 
-如果信道完全可靠，那么可靠传输就不成问题了，此时的可靠传输非常简单。发送方只需要将数据放到信道上它就可以可靠的到达接收方，并由接收方接收。但是这种信道是完全理想化的，不存在的。
+如果信道完全可靠，那么可靠传输就不成问题了，此时的可靠传输非常简单。发送方只需要将数据放到信道上它就可以可靠的到达接收方，并由接收方接收。
+但是这种信道是完全理想化的，不存在的。
 
 ### 会出现比特错误的信道上的可靠传输
 
