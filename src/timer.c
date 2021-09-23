@@ -15,7 +15,7 @@ void* tcp_check_timeout(void* arg) {
     float timeout = sock->rtt_timer->timeout;
     time_t cur_time = time(NULL);
     // 初始化信号量
-    while(difftime(time(NULL), cur_time) < 3) {
+    while(difftime(time(NULL), cur_time) < timeout) {
         if (sock->interrupt_signal == 1) {
             printf("[Timer] 接收到中断信号.\n");
             // 更新RTT的值
@@ -188,9 +188,9 @@ void tcp_retransmit_timer(tju_tcp_t* sock) {
     if (len < 0) {
         printf(RED "[重传分组] base: %d next_seq: %d len: %d.\n" RESET, base, next_seq, len);
         printf(RED "[重传分组] len 为负数.\n" RESET);
-        // exit(0);
-        len = 100;
-        next_seq = base + len;
+        exit(0);
+        // len = 100;
+        // next_seq = base + len;
     }
 
     if (len > MAX_LEN) {
@@ -201,7 +201,7 @@ void tcp_retransmit_timer(tju_tcp_t* sock) {
     memcpy(buf, sock->window.wnd_send->send_windows + base, len);
 
     uint16_t plen = DEFAULT_HEADER_LEN + len;
-    uint32_t seq = next_seq;
+    uint32_t seq = base;
     char* msg;
     msg = create_packet_buf(sock->established_local_addr.port, sock->established_remote_addr.port, seq, 0, 
               DEFAULT_HEADER_LEN, plen, NO_FLAG, 1, 0, buf, len);

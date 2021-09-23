@@ -92,9 +92,9 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt) {
             //     0
             // );
             // sendToLayer3(send_pkt, HEADER_LEN);
-            tcp_send_ack(sock);
-            printf(BLU "[发送ACK] 服务端向客户端发送ACK，序列号为%d.\n" RESET, sock->window.wnd_recv->expect_seq);
-            printf(RED "[处理分组] 失序的序列号, 发送ACK.\n" RESET);
+            // tcp_send_ack(sock);
+            // printf(BLU "[发送ACK] 服务端向客户端发送ACK，序列号为%d.\n" RESET, sock->window.wnd_recv->expect_seq);
+            printf(RED "[处理分组] 失序的序列号.\n" RESET);
             return 0;
         }else if(seq == expected_seq) {
             // 向对方发送ACK
