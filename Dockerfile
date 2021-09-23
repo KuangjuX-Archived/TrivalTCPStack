@@ -21,6 +21,8 @@ RUN apt-get update \
     && apt-get install tcpdump -y \
     && apt-get install sudo -y \
     && apt-get install net-tools -y \
-    && apt-get install iproute2 -y
+    && apt-get install iproute2 -y \
+    && pip install scapy \
+    && pip install matplotlib 
 
 EXPOSE 22
