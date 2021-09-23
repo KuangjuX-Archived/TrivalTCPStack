@@ -26,19 +26,19 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt) {
         // printf("[RECEIVE] only head.\n");
         back_only_header(sock);
         return 0;
-    }
-
-    if(flag==BACKHEAD){
+    } else if(flag==BACKHEAD){
         // printf("BACK HEAD [RECEIVE] only head.\n");
         return 0;
-    }
-
-    if(flag == ACK) {
+    }else if(flag == ACK) {
         handle_success_ack(sock);
         // printf("[收到ACK] 接收到ACK.\n");
         // 此处为发送方，收到接收方传来的ACK
         // 需要检查是否有“捎带”的数据
         uint32_t seq = get_seq(pkt);
+        // if (seq <= sock->window.wnd_send->base) {
+        //     sock->window.wnd_send->base = seq;
+        //     sock->window.wnd_send->nextseq = seq;
+        // }
         // printf("[收到ACK] 序列号 seq 为: %d.\n", seq);
         uint16_t len = get_plen(pkt) - get_hlen(pkt);
         sock->window.wnd_send->base = seq + len;
@@ -59,6 +59,8 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt) {
         if(get_plen(pkt) < get_hlen(pkt)) {
             printf(RED "[接收方] 收到非法的 pakcet len, 退出程序.\n" RESET);
             exit(0);
+        }else if (get_plen(pkt) == get_hlen(pkt)) {
+            return 0;
         }
         // 此时有"捎带"数据，应当继续执行将"捎带"数据存入到received_buf中
 

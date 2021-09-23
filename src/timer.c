@@ -15,7 +15,7 @@ void* tcp_check_timeout(void* arg) {
     float timeout = sock->rtt_timer->timeout;
     time_t cur_time = time(NULL);
     // 初始化信号量
-    while(difftime(time(NULL), cur_time) < timeout) {
+    while(difftime(time(NULL), cur_time) < 3) {
         if (sock->interrupt_signal == 1) {
             printf("[Timer] 接收到中断信号.\n");
             // 更新RTT的值

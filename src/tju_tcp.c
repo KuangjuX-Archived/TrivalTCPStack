@@ -430,14 +430,14 @@ _Noreturn void* tcp_send_stream(void* arg) {
         // printf("发送循环第%d轮 \n",x);
         // x++;
         if(sock->sending_len > 0) {
-            int improve_flag = improve_send_wnd(sock);
-            if(!improve_flag) {
-                sleep(1);
-                continue;
-            }
-            int data_on_way = sock->window.wnd_send->nextseq - sock->window.wnd_send->base;
-            int uwnd = sock->window.wnd_send->rwnd-data_on_way;
-            int wnd_size = min_among_3(sock->cwnd,uwnd,sock->sending_len);
+            // int improve_flag = improve_send_wnd(sock);
+            // if(!improve_flag) {
+            //     sleep(1);
+            //     continue;
+            // }
+            // int data_on_way = sock->window.wnd_send->nextseq - sock->window.wnd_send->base;
+            // int uwnd = sock->window.wnd_send->rwnd-data_on_way;
+            // int wnd_size = min_among_3(sock->cwnd,uwnd,sock->sending_len);
 
             pthread_mutex_lock(&sock->send_lock);
             int window_left = sock->window.wnd_send->window_size 
@@ -445,7 +445,7 @@ _Noreturn void* tcp_send_stream(void* arg) {
 
             // int len = sock->window.wnd_send->nextseq - sock->window.wnd_send->base;
             int len = sock->sending_len;
-            len = min(wnd_size, len);
+            // len = min(wnd_size, len);
             char* buf = (char*)malloc(len);
             memcpy(buf, sock->sending_buf, len);
 
@@ -466,7 +466,7 @@ _Noreturn void* tcp_send_stream(void* arg) {
 
             if(seq < base + window_size) {
                 // 发送数据
-                tcp_start_timer(sock);
+                // tcp_start_timer(sock);
                 uint16_t adv_wnd = TCP_RECV_BUFFER_SIZE - sock->received_len;
                 char* ptr = sock->window.wnd_send->send_windows + sock->window.wnd_send->nextseq;
                 memcpy(ptr, buf, len);
@@ -475,15 +475,15 @@ _Noreturn void* tcp_send_stream(void* arg) {
                 printf(YEL "[发送分组] 序列号为: %d.\n" RESET, seq);
                 printf(YEL "[发送分组] 长度为: %d.\n" RESET, plen);
                 sendToLayer3(msg, plen);
-                sock->window.wnd_send->nextseq += len;
                 printf(YEL "[发送分组] 将发送的序列号为: %d.\n" RESET, sock->window.wnd_send->nextseq);
-            } else if(base == seq) {
-                // 开始计时
-                // tcp_start_timer(sock);
-                tcp_stop_timer(sock);
+
+                if (seq == base) {
+                    // 开始计时
+                    tcp_start_timer(sock);
+                }
                 sock->window.wnd_send->nextseq += len;
             }else {
-                printf("[发送线程] 发送窗口已满 seq: %d, base: %d.\n", seq, base);
+                printf(RED "[发送线程] 发送窗口已满 seq: %d, base: %d.\n" RESET, seq, base);
                 sleep(1);
             }
             // 更新nextseq的值
@@ -492,6 +492,7 @@ _Noreturn void* tcp_send_stream(void* arg) {
             // 休息，防止发送线程不断轮询造成CPU负载过重
             sleep(1);
         }
+        sleep(1);
     }
 }
 
