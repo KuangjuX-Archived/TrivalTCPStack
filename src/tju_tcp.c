@@ -475,14 +475,13 @@ _Noreturn void* tcp_send_stream(void* arg) {
                 printf(YEL "[发送分组] 序列号为: %d.\n" RESET, seq);
                 printf(YEL "[发送分组] 长度为: %d.\n" RESET, plen);
                 sendToLayer3(msg, plen);
-                sock->window.wnd_send->nextseq += len;
                 printf(YEL "[发送分组] 将发送的序列号为: %d.\n" RESET, sock->window.wnd_send->nextseq);
 
                 if (seq == base) {
                     // 开始计时
                     tcp_start_timer(sock);
-                    sock->window.wnd_send->nextseq += len;
                 }
+                sock->window.wnd_send->nextseq += len;
             }else {
                 printf(RED "[发送线程] 发送窗口已满 seq: %d, base: %d.\n" RESET, seq, base);
                 sleep(1);
