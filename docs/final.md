@@ -190,14 +190,31 @@ TCP协议要求客户端和服务端通过三次握手发起连接。首先，�
 
 ### 协议规则
 **可靠传输FSM**
-![](image/GBNsend_FSM.png)  
+
+**可靠传输发送方**
+
+![](image/GBNsend_FSM.png)
+
+
+
+  **可靠传输接收方**
+
 ![](image/GBNrecv_FSM.png)  
 **三次握手FSM**
+
+**三次握手客户端**
+
 ![](image/shake_FSM.png)  
+
+
+
+**三次握手服务端**
+
 ![](image/shake_client_FSM.png)  
 **拥塞控制FSM**
 ![](image/con_FSM.png)  
 **流量控制**  
+
 ![](image/data_FSM.png)
 ----
 # 模块详细实现
@@ -281,83 +298,15 @@ typedef struct sock_queue {
 
 客户端的处理过程与服务端类似， `connect()` 主动向服务端发送报文，随后阻塞等待直到 `connect_sock` 不为 NULL。
 
-其中关于接收报文的过程则在一个子线程中进行。当内核检测到接受到分组后，则将其交给 `onTCPPocket()` 来处理分组，其中， `onPocket()`分为不同情况来处理分组：
+其中关于接收报文的过程则在一个子线程中进行。当内核检测到接受到分组后，则将其交给 `onTCPPocket()` 来处理分组，我们使用 `tcp_manager` 来全局管理 TCP 的连接状态。 其中， `onTCPPocket()`分为不同情况来处理分组：
 
-```c
-/*
-模拟Linux内核收到一份TCP报文的处理函数
-*/
-int onTCPPocket(char* pkt){
-    // 当我们收到TCP包时 包中 源IP 源端口 是发送方的 也就是我们眼里的 远程(remote) IP和端口
-    uint16_t remote_port = get_src(pkt);
-    uint16_t local_port = get_dst(pkt);
-    printf("get a pkt rwnd is %d \n", get_advertised_window(pkt));
-    // remote ip 和 local ip 是读IP 数据包得到的 仿真的话这里直接根据hostname判断
-    // 获取是server还是client
-    int is_server;
-    char hostname[8];
-    gethostname(hostname, 8);
-    uint32_t remote_ip, local_ip;
-    if(strcmp(hostname,"server")==0){ // 自己是服务端 远端就是客户端
-        local_ip = inet_network("10.0.0.3");
-        remote_ip = inet_network("10.0.0.2");
-        is_server = 1;
-    }else if(strcmp(hostname,"client")==0){ // 自己是客户端 远端就是服务端 
-        local_ip = inet_network("10.0.0.2");
-        remote_ip = inet_network("10.0.0.3");
-        is_server = 0;
-    }
+- 当服务端未建立连接时，即不能在哈希表找到对应的 socket 时，此时交给 `tcp_rcv_state_server()` 处理。
+- 当客户端未建立连接，即不能在连接哈希表中找到对应的 socket 时，此时交给 `tcp_rcv_state_client()` 处理。
+- 当服务端建立连接，即能在连接哈希表中找到对应的 socket 且状态为 ESTABLISHED 时，交给 `tju_handle_packet()` 处理
+- 当客户端建立连接，即能在连接哈希表中找到对应的 socket 且状态为 ESTABLISHED 时，交给 `tju_handle_packet()` 处理
+- 当客户端或服务端处于关闭状态，即收到的分组标志位为 `FIN` 或者状态不是 ESTABLISHED，此时交给 `tcp_state_close()` 处理
 
-    tju_packet_t* packet = buf_to_packet(pkt);
-    if(!tcp_check(packet)) {
-        printf("tcp check error.\n");
-        return -1;
-    }
-    if(packet->data != NULL) {
-        free(packet->data);
-    }
-    free(packet);   
-
-    int hashval;
-
-    // 首先查找已经建立连接的socket哈希表
-    // 根据4个ip port 组成四元组 查找有没有已经建立连接的socket
-    hashval = cal_hash(local_ip, local_port, remote_ip, remote_port);
-    if (established_socks[hashval] != NULL) {
-        // 这里应当判断是否发送FIN packet, 或者socket的状态不是ESTABLIED
-        int new_hash = cal_hash(local_ip, local_port, 0, 0);
-        if(is_server && (is_fin(pkt) || listen_socks[new_hash]->state != ESTABLISHED)) {
-            return tcp_state_close(listen_socks[new_hash], pkt);
-        }else if(!is_server &&(is_fin(pkt) || connect_sock->state != ESTABLISHED)) {
-            return tcp_state_close(connect_sock, pkt);
-        }else {
-            return tju_handle_packet(established_socks[hashval], pkt);
-        }
-    }
-
-    tju_sock_addr conn_addr;
-    conn_addr.ip = remote_ip;
-    conn_addr.port = remote_port;
-    
-
-    hashval = cal_hash(local_ip, local_port, 0, 0);
-    // 没有的话再查找监听中的socket哈希表
-    if (listen_socks[hashval] != NULL && is_server) {
-        // 监听的socket只有本地监听ip和端口 没有远端
-        return tcp_rcv_state_server(listen_socks[hashval], pkt, &conn_addr);
-    }
-
-    if (connect_sock != NULL && !is_server) {
-        return tcp_rcv_state_client(connect_sock, pkt, &conn_addr);
-    }
-
-    // 都没找到 丢掉数据包
-    printf("找不到能够处理该TCP数据包的socket, 丢弃该数据包\n");
-    return -1;
-}
-```
-
-其中， `tcp_rcv_state_server()` 和 `tcp_rcv_state_client()` 方法来分别处理服务端与客户端握手时的状态机转换过程。
+其中， `tcp_rcv_state_server()` 和 `tcp_rcv_state_client()` 方法来分别处理服务端与客户端握手时的状态机转换过程；`tju_handle_packet()` 用来处理可靠传输，`tcp_state_close()` 用来处理套接字关闭。 
 
 **涉及到的方法：**
 
