@@ -41,7 +41,10 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt) {
         // }
         // printf("[收到ACK] 序列号 seq 为: %d.\n", seq);
         uint16_t len = get_plen(pkt) - get_hlen(pkt);
-        sock->window.wnd_send->base = seq + len;
+        sock->window.wnd_send->base = seq;
+        // if (sock->window.wnd_send->nextseq <= sock->window.wnd_send->base) {
+        //     sock->window.wnd_send->nextseq = sock->window.wnd_send->base;
+        // }
         printf(BLU "[接收ACK] 更新 base: %d.\n" RESET, sock->window.wnd_send->base);
         // if (len > 0) {
         //     printf("[接收ACK] 更新 base: %d", sock->window.wnd_send->base);
@@ -75,21 +78,23 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt) {
             // 选择丢弃或者存起来(选择重传)
 
             // 这里先丢弃,应当向对方发送上一次的ACK
-            char* send_pkt = create_packet_buf(
-                sock->established_local_addr.port,
-                sock->established_remote_addr.port,
-                sock->window.wnd_recv->expect_seq,
-                0,
-                HEADER_LEN,
-                HEADER_LEN,
-                ACK,
-                100,
-                0,
-                NULL,
-                0
-            );
-            sendToLayer3(send_pkt, HEADER_LEN);
-            printf(RED "[处理分组] 失序的序列号, 发送ACK.\n" RESET);
+            // char* send_pkt = create_packet_buf(
+            //     sock->established_local_addr.port,
+            //     sock->established_remote_addr.port,
+            //     sock->window.wnd_recv->expect_seq,
+            //     sock->window.wnd_recv->expect_seq,
+            //     HEADER_LEN,
+            //     HEADER_LEN,
+            //     ACK,
+            //     100,
+            //     0,
+            //     NULL,
+            //     0
+            // );
+            // sendToLayer3(send_pkt, HEADER_LEN);
+            // tcp_send_ack(sock);
+            // printf(BLU "[发送ACK] 服务端向客户端发送ACK，序列号为%d.\n" RESET, sock->window.wnd_recv->expect_seq);
+            printf(RED "[处理分组] 失序的序列号.\n" RESET);
             return 0;
         }else if(seq == expected_seq) {
             // 向对方发送ACK
@@ -97,7 +102,23 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt) {
             // 更新expected_seq
             int len = get_plen(pkt) - get_hlen(pkt);
             sock->window.wnd_recv->expect_seq += len;
+            // char* send_pkt = create_packet(
+            //     sock->established_local_addr.port,
+            //     sock->established_remote_addr.port,
+            //     sock->window.wnd_recv->expect_seq,
+            //     sock->window.wnd_recv->expect_seq,
+            //     HEADER_LEN,
+            //     HEADER_LEN,
+            //     ACK,
+            //     100,
+            //     0,
+            //     NULL,
+            //     0
+            // );
+            printf(BLU "[发送ACK] 服务端向客户端发送ACK，序列号为%d.\n" RESET, sock->window.wnd_recv->expect_seq);
+            // sendToLayer3(send_pkt, HEADER_LEN);
             // 继续执行，接受数据
+            tcp_send_ack(sock);
         }else if(seq < expected_seq) {
             printf("[处理分组] 无效的序列号.\n");
             return -1;
@@ -117,7 +138,7 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt) {
     sock->received_len += data_len;
 
     pthread_mutex_unlock(&(sock->recv_lock)); // 解锁
-    tcp_send_ack(sock);
+    // tcp_send_ack(sock);
 
     return 0;
 }
