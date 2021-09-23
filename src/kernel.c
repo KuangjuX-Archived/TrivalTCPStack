@@ -121,7 +121,10 @@ int tju_handle_packet(tju_tcp_t* sock, char* pkt) {
             tcp_send_ack(sock);
         }else if(seq < expected_seq) {
             printf("[处理分组] 无效的序列号.\n");
-            return -1;
+            // 此时发送对应的ACK，使客户端滑动窗口
+            tcp_send_ack(sock);
+            // return -1;
+            return 0;
         }
     }
     uint32_t data_len = get_plen(pkt) - DEFAULT_HEADER_LEN;

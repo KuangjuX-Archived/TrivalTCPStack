@@ -88,39 +88,41 @@ void tcp_write_timer_handler(tju_tcp_t* sock) {
             // 此时客户端应当重新向服务端发送分组
             // tcp_send_rst(sock);
             tcp_start_timer(sock);
-            char* send_pkt = create_packet_buf(
-                sock->established_local_addr.port,
-                sock->bind_addr.port,
-                0,
-                0,
-                HEADER_LEN,
-                HEADER_LEN,
-                SYN,
-                TCP_RECV_BUFFER_SIZE - sock->received_len,
-                0,
-                NULL,
-                0
-            );
-            sendToLayer3(send_pkt, HEADER_LEN);
+            // char* send_pkt = create_packet_buf(
+            //     sock->established_local_addr.port,
+            //     sock->bind_addr.port,
+            //     0,
+            //     0,
+            //     HEADER_LEN,
+            //     HEADER_LEN,
+            //     SYN,
+            //     TCP_RECV_BUFFER_SIZE - sock->received_len,
+            //     0,
+            //     NULL,
+            //     0
+            // );
+            // sendToLayer3(send_pkt, HEADER_LEN);
+            tcp_send_syn(sock);
             break;
         case SYN_RECV:  
             // tcp_send_rst(sock);
             // 此时服务端应当重新向客户端发送分组
             tcp_start_timer(sock);
-            char* send_pkt_2 = create_packet(
-                sock->bind_addr.port,
-                sock->established_remote_addr.port,
-                0,
-                0,
-                HEADER_LEN,
-                HEADER_LEN,
-                SYN | ACK,
-                0,
-                0,
-                NULL,
-                0
-            );
-            sendToLayer3(send_pkt_2, HEADER_LEN);
+            // char* send_pkt_2 = create_packet(
+            //     sock->bind_addr.port,
+            //     sock->established_remote_addr.port,
+            //     0,
+            //     0,
+            //     HEADER_LEN,
+            //     HEADER_LEN,
+            //     SYN | ACK,
+            //     0,
+            //     0,
+            //     NULL,
+            //     0
+            // );
+            // sendToLayer3(send_pkt_2, HEADER_LEN);
+            tcp_send_syn_ack(sock);
             break;
         case ESTABLISHED: 
             // 超时重传，这里或许需要判断一下重传的次数，若重传次数过多应该关闭连接

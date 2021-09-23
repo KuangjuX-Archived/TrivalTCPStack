@@ -49,7 +49,7 @@ int main(int argc, char **argv) {
    for(int i = 10; i < 99; i++) {
        tcp_recv(conn_sock, buf, 7);
        printf(GRN "[接收消息] %s\n" RESET, buf);
-    //    sleep(1);
+       sleep(1);
    }
    printf(RED "[服务端] 接收完成.\n" RESET);
     while(TRUE){}
