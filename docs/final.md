@@ -506,7 +506,7 @@ void handle_success_ack(tju_tcp_t* sock){
 }
 ````
 
-**超时处理的函数**
+**超时处理的函数 **
 
 ````c
 void handle_loss_ack(tju_tcp_t* sock) {
