@@ -238,6 +238,7 @@ void handle_loss_ack(tju_tcp_t* sock) {
     }else{
         printf("不存在相应状态\n");
     }
+    printf("[CONGESTION STATE]cwnd:%d STATUS:%d ssthresh:%d\n",sock->cwnd,sock->con_status,sock->ssthresh);
 }
 
 // 重传次数太多，此时应当主动关闭连接

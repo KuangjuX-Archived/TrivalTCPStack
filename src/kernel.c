@@ -383,12 +383,13 @@ void handle_success_ack(tju_tcp_t* sock){
             sock->con_status=CONGESTION_AVOIDANCE;
         }
     }else if(sock->con_status==CONGESTION_AVOIDANCE){
-         sock->cwnd=sock->cwnd+SMSS*(SMSS/sock->cwnd);
+        sock->cwnd=sock->cwnd+(int)(SMSS*((float)SMSS/sock->cwnd));
     }else if(sock->con_status==FAST_RECOVERY){
         sock->cwnd=sock->cwnd+SMSS;
     }else{
         printf("handle_success_ack 出现未定义行为\n");
     }
+    printf("[CONGESTION STATE]cwnd:%d STATUS:%d ssthresh:%d\n",sock->cwnd,sock->con_status,sock->ssthresh);
 }
 
 /*
