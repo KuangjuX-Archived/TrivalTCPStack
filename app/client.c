@@ -29,7 +29,7 @@ int main(int argc, char **argv) {
         exit(0);
     }
     while(fgets(buf, sizeof(buf), fp)) {
-        printf("[Debug] %s\n", buf);
+        // printf("[Debug] %s\n", buf);
         tcp_send(my_socket, buf, sizeof(buf));
         sleep(1);
     }
