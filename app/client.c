@@ -14,14 +14,14 @@ int main(int argc, char **argv) {
     target_addr.port = 1234;
 
     tcp_connect(my_socket, target_addr);
-    for(int i = 10; i < 99; i++) {
-        char* msg = (char*)malloc(7);
+    for(int i = 100; i < 999; i++) {
+        char* msg = (char*)malloc(8);
         sprintf(msg, "echo %d", i);
         printf(GRN "[发送消息] %s.\n" RESET, msg);
-        tcp_send(my_socket, msg, 7);
+        tcp_send(my_socket, msg, 8);
         // sleep(1);
     }
     while(TRUE){}
-    // tcp_close(my_socket);
+    tcp_close(my_socket);
     return EXIT_SUCCESS;
 }
