@@ -69,8 +69,8 @@
 #define TCP_SEND_WINDOW_SIZE 128 * MAX_DLEN
 
 // TCP send/recv buffer size
-#define TCP_SEND_BUFFER_SIZE 65535 //max for uint16
-#define TCP_RECV_BUFFER_SIZE 100 //max for uint16
+#define TCP_SEND_BUFFER_SIZE 128 * MAX_DLEN //max for uint16
+#define TCP_RECV_BUFFER_SIZE 100 // max for uint16
 
 
 // TCP改进窗口算法的阈值

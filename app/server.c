@@ -3,6 +3,7 @@
 #include "kernel.h"
 #include <string.h>
 #include <arpa/inet.h>
+#include <stdlib.h>
 
 
 
@@ -46,11 +47,14 @@ int main(int argc, char **argv) {
     }
 
     char buf[512];
-   for(int i = 100; i < 999; i++) {
-       tcp_recv(conn_sock, buf, 999);
-       printf(GRN "[接收消息] %s\n" RESET, buf);
-    //    sleep(1);
-   }
+//    for(int i = 0; i < 10000; i++) {
+//        tcp_recv(conn_sock, buf, 4);
+//     //    printf(GRN "[接收消息] %s\n" RESET, buf);
+//     //    sleep(1);
+//    }
+    while(1) {
+        tcp_recv(conn_sock, buf, 512);
+    }
     printf(RED "[服务端] 接收完成.\n" RESET);
     tcp_close(conn_sock);
     while(TRUE){}

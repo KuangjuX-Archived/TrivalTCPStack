@@ -429,14 +429,14 @@ _Noreturn void* tcp_send_stream(void* arg) {
         // printf("发送循环第%d轮 \n",x);
         // x++;
         if(sock->sending_len > 0) {
-            int improve_flag = improve_send_wnd(sock);
-            if(!improve_flag) {
-                sleep(1);
-                continue;
-            }
-            int data_on_way = sock->window.wnd_send->nextseq - sock->window.wnd_send->base;
-            int uwnd = sock->window.wnd_send->rwnd-data_on_way;
-            int wnd_size = min_among_3(sock->cwnd,uwnd,sock->sending_len);
+        //     int improve_flag = improve_send_wnd(sock);
+        //     if(!improve_flag) {
+        //         sleep(1);
+        //         continue;
+        //     }
+        //     int data_on_way = sock->window.wnd_send->nextseq - sock->window.wnd_send->base;
+        //     int uwnd = sock->window.wnd_send->rwnd-data_on_way;
+        //     int wnd_size = min_among_3(sock->cwnd,uwnd,sock->sending_len);
 
             pthread_mutex_lock(&sock->send_lock);
             int window_left = sock->window.wnd_send->window_size 
@@ -444,7 +444,7 @@ _Noreturn void* tcp_send_stream(void* arg) {
 
             // int len = sock->window.wnd_send->nextseq - sock->window.wnd_send->base;
             int len = sock->sending_len;
-            len = min(wnd_size, len);
+            // len = min(wnd_size, len);
             char* buf = (char*)malloc(len);
             memcpy(buf, sock->sending_buf, len);
 

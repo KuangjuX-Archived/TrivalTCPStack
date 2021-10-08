@@ -1,6 +1,7 @@
 #include "api.h"
 #include "kernel.h"
 #include <string.h>
+#include <stdlib.h>
 
 
 int main(int argc, char **argv) {
@@ -14,12 +15,23 @@ int main(int argc, char **argv) {
     target_addr.port = 1234;
 
     tcp_connect(my_socket, target_addr);
-    for(int i = 100; i < 999; i++) {
-        char* msg = (char*)malloc(8);
-        sprintf(msg, "echo %d", i);
-        printf(GRN "[发送消息] %s.\n" RESET, msg);
-        tcp_send(my_socket, msg, 8);
-        // sleep(1);
+    // for(int i = 0; i < 10000; i++) {
+    //     char* msg = (char*)malloc(4);
+    //     sprintf(msg, "test", i);
+    //     // printf(GRN "[发送消息] %s.\n" RESET, msg);
+    //     tcp_send(my_socket, msg, 4);
+    //     // sleep(1);
+    // }
+    char buf[1024];
+    FILE* fp;
+    fp = fopen("app/test.txt", "r");
+    if(fp == NULL) {
+        exit(0);
+    }
+    while(fgets(buf, sizeof(buf), fp)) {
+        printf("[Debug] %s\n", buf);
+        tcp_send(my_socket, buf, sizeof(buf));
+        sleep(1);
     }
     while(TRUE){}
     tcp_close(my_socket);
